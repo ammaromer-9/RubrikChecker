@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Boolean, Float, ForeignKey, Text
+from sqlalchemy import Boolean, Float, ForeignKey, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -60,6 +60,12 @@ class CriterionResult(Base):
     max_points: Mapped[float] = mapped_column(Float)
     uncertain: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     chosen_level: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Confidence reported by the run whose result is shown (see scoring.aggregate_criterion).
+    confidence: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Points from every successful run, to show how much the runs disagreed.
+    run_points: Mapped[list[float]] = mapped_column(
+        JSONB, default=list, server_default=text("'[]'::jsonb")
+    )
     reasoning: Mapped[str] = mapped_column(Text, default="", server_default="")
     # Verified evidence quotes with character offsets into the draft.
     evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)

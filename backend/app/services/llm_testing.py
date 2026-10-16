@@ -28,6 +28,9 @@ class FakeLLMProvider:
         self._handler = handler
         self.calls: list[tuple[str, list[Message]]] = []
 
+    def use_handler(self, handler: Handler) -> None:
+        self._handler = handler
+
     def add_replies(self, *replies: Reply) -> None:
         self._replies.extend(replies)
 

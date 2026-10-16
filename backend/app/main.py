@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
-from app.routers import assignments, files, health
+from app.routers import assignments, files, gradings, health, submissions
 from app.services.llm_client import LLMConfigError, LLMError, LLMOutputError, TransientLLMError
 
 settings = get_settings()
@@ -20,6 +20,8 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api")
 app.include_router(files.router, prefix="/api")
 app.include_router(assignments.router, prefix="/api")
+app.include_router(submissions.router, prefix="/api")
+app.include_router(gradings.router, prefix="/api")
 
 
 def _llm_error_response(status_code: int, detail: str) -> JSONResponse:

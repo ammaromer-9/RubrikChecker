@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     anthropic_model: str = ""
     llm_timeout_seconds: float = 60.0
     llm_max_retries: int = 3
+    grading_runs: int = 3
+    grading_temperature: float = 0.7
+    grading_concurrency: int = 5
+    feedback_max_quoted_words: int = 25
     max_draft_chars: int = 50_000
     max_assignment_text_chars: int = 20_000
     max_upload_bytes: int = 5 * 1024 * 1024
