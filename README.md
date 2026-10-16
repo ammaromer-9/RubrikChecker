@@ -2,7 +2,7 @@
 
 A pre-submission grading assistant for students. Paste the assignment instructions, the rubric and a draft. RubricCheck predicts a score per rubric criterion with a range, highlights the evidence in the draft, and gives feedback that helps you improve without writing the work for you.
 
-> Status: Phase 6 (grading, frontend, revisions). Features land phase by phase.
+> Status: Phase 7 (grading, frontend, revisions, calibration). Features land phase by phase.
 
 ## Stack
 
@@ -50,6 +50,30 @@ The feedback is meant to help students improve their own work, so it must never 
 2. **Post-check:** model output is not trusted. Code scans every feedback field for long passages (more than `FEEDBACK_MAX_QUOTED_WORDS`, default 25 words) inside quotation marks, blockquotes or code fences that do **not** appear in the student's own draft. Flagged feedback is regenerated once; if it is still flagged, it is replaced by a generic hint built from the rubric's next-level description.
 
 This is a heuristic, not a guarantee. It catches the common failure (the model "helpfully" drafting a replacement passage) and fails safe, but it cannot detect every paraphrased suggestion.
+
+## Calibration
+
+`backend/scripts/calibrate.py` checks how closely the grader agrees with human graders. It reports, per strategy: mean absolute error (points and % of the scale), bias, how often the human score falls inside the predicted range (**coverage**, shown next to the range width so a very wide range can't look good for free), quadratic weighted kappa, Pearson r, per-criterion agreement where per-criterion human scores exist, and the share of evidence quotes that really appear in the essay. It writes a markdown report with a strategy comparison table.
+
+**This calls the real API and costs money.** It prints the number of calls first and asks before spending anything (`--dry-run` stops there; `--yes` skips the question). Predictions are saved as it goes, so an interrupted run can continue with `--resume <run folder>`.
+
+Datasets go in `backend/data/` (gitignored; nothing is downloaded for you). Run from `backend/`:
+
+```bash
+# Your own CSV: columns instructions, rubric (or rubric_json), draft, human_score,
+# optional id, max_score and criterion_<id> per-criterion human scores.
+# See scripts/examples/example_essays.csv.
+python -m scripts.calibrate custom --data data/essays.csv --strategies per_criterion holistic
+
+# ASAP-AES: the data file has no prompt or rubric text, so you provide them.
+python -m scripts.calibrate asap --data data/training_set_rel3.tsv --essay-set 1 \
+    --instructions-file data/set1_prompt.txt --rubric-file data/set1_rubric.txt \
+    --limit 30 --seed 0 --strategies per_criterion per_criterion:no_evidence holistic
+```
+
+Strategies are `per_criterion` (one call per criterion, as in the app) or `holistic` (one call grades every criterion), optionally `:no_evidence` (the grader is not asked for supporting quotes) and `@<model>` to compare models, e.g. `per_criterion@claude-haiku-5-5`. A JSON file via `--config` works too. Reports land in `backend/reports/` (gitignored).
+
+Notes: the rubric must be on the same scale as the human scores (ASAP rubric text should total the score range's maximum, e.g. 12 for set 1); predicted scores are clamped to the range a human could have given; QWK is only reported when all essays share one integer scale.
 
 ## Tests
 

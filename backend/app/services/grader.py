@@ -17,13 +17,18 @@ import logging
 from dataclasses import dataclass
 from typing import Literal
 
-from pydantic import create_model
+from pydantic import Field, create_model
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
 from app.models import Assignment, CriterionResult, Grading, InstructionCheckResult, Submission
 from app.prompts.loader import load_prompt
-from app.schemas.grading import CriterionFeedback, CriterionGrade, VerifiedEvidence
+from app.schemas.grading import (
+    CriterionFeedback,
+    CriterionGrade,
+    EvidenceQuote,
+    VerifiedEvidence,
+)
 from app.schemas.requirements import CheckResult, RequirementList
 from app.schemas.rubric import Criterion, Rubric
 from app.services.evidence import verify_evidence
@@ -52,15 +57,25 @@ class CriterionRun:
     points: float
 
 
-def grade_schema_for(criterion: Criterion) -> type[CriterionGrade]:
+def grade_schema_for(criterion: Criterion, enforce_evidence: bool = False) -> type[CriterionGrade]:
     """A CriterionGrade whose `level_label` must be one of this criterion's labels.
 
     A wrong label becomes a validation error that lists the allowed values, which the
-    LLM client feeds back to the model on its one retry.
+    LLM client feeds back to the model on its one retry. With `enforce_evidence`, at
+    least one quote is required too (used by the evaluation strategies; production
+    allows none because a missing feature may have nothing to quote).
     """
     labels = tuple(level.label for level in criterion.levels)
+    evidence = (
+        (list[EvidenceQuote], Field(min_length=1))
+        if enforce_evidence
+        else (list[EvidenceQuote], Field(default_factory=list))
+    )
     return create_model(  # type: ignore[call-overload,no-any-return]
-        "CriterionGradeForCriterion", __base__=CriterionGrade, level_label=(Literal[labels], ...)
+        "CriterionGradeForCriterion",
+        __base__=CriterionGrade,
+        level_label=(Literal[labels], ...),
+        evidence=evidence,
     )
 
 
@@ -71,10 +86,12 @@ async def grade_criterion_once(
     draft: str,
     criterion: Criterion,
     grading_id: int | None,
+    prompt_name: str = "grade_criterion",
+    enforce_evidence: bool = False,
 ) -> CriterionRun:
-    prompt = load_prompt("grade_criterion")
+    prompt = load_prompt(prompt_name)
     grade = await llm.generate_structured(
-        grade_schema_for(criterion),
+        grade_schema_for(criterion, enforce_evidence),
         purpose="grade_criterion",
         system=SYSTEM_PROMPT,
         prompt=prompt.render(
@@ -102,6 +119,8 @@ async def grade_all_criteria(
     num_runs: int,
     concurrency: int,
     grading_id: int | None,
+    prompt_name: str = "grade_criterion",
+    enforce_evidence: bool = False,
 ) -> dict[str, list[CriterionRun]]:
     """Run every criterion `num_runs` times. A failed run is dropped; a criterion with
     no successful run fails the whole grading."""
@@ -111,7 +130,7 @@ async def grade_all_criteria(
         async with semaphore:
             return await grade_criterion_once(
                 llm, instructions=instructions, draft=draft, criterion=criterion,
-                grading_id=grading_id,
+                grading_id=grading_id, prompt_name=prompt_name, enforce_evidence=enforce_evidence,
             )
 
     jobs = [(c, one(c)) for c in rubric.criteria for _ in range(num_runs)]
