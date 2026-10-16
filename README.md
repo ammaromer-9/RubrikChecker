@@ -37,7 +37,7 @@ npm run dev
 
 ## How grading works
 
-- Each rubric criterion is graded by its own LLM call, repeated `GRADING_RUNS` times (default 3) at a non-zero temperature. Per criterion the app reports the median points, the min-max range, and flags it **uncertain** when runs disagree by more than one rubric level.
+- Each rubric criterion is graded by its own LLM call, repeated `GRADING_RUNS` times (default 3). Current Claude models fix their sampling parameters (`temperature` can't be set), so the runs differ through the model's default sampling. Per criterion the app reports the median points, the min-max range, and flags it **uncertain** when runs disagree by more than one rubric level.
 - The overall score is the sum of the medians. Its range sums the per-criterion minimums and maximums, which is deliberately conservative.
 - The model must justify its score with quotes. Every quote is checked in code against the draft (ignoring whitespace and curly-vs-straight quotes) and stored with character offsets. Quotes that are not really in the draft are flagged as unverified, never highlighted.
 - Points always come from the confirmed rubric level the model picked, not from a number the model wrote.

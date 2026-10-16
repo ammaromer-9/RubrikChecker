@@ -20,6 +20,4 @@ async def parse_rubric(llm: LLMClient, rubric_text: str) -> Rubric:
         system=SYSTEM_PROMPT,
         prompt=prompt.render(rubric_text=rubric_text),
         prompt_version=prompt.version,
-        max_tokens=4096,
-        temperature=0.0,
     )

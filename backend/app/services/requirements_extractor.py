@@ -21,6 +21,4 @@ async def extract_requirements(
         prompt=prompt.render(instructions_text=instructions_text),
         prompt_version=prompt.version,
         grading_id=grading_id,
-        max_tokens=2048,
-        temperature=0.0,
     )

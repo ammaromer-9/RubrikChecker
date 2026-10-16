@@ -28,6 +28,9 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
+# Generous on purpose: adaptive thinking tokens share this budget with the JSON reply.
+DEFAULT_MAX_TOKENS = 16_000
+
 
 class LLMError(Exception):
     """Any failure while calling the LLM."""
@@ -62,9 +65,14 @@ class LLMProvider(Protocol):
     model: str
 
     async def complete(
-        self, *, system: str, messages: list[Message], max_tokens: int, temperature: float
+        self, *, system: str, messages: list[Message], max_tokens: int
     ) -> LLMResponse:
-        """Return the model's text reply. Raise TransientLLMError for retryable failures."""
+        """Return the model's text reply. Raise TransientLLMError for retryable failures.
+
+        There is deliberately no `temperature`: current Claude models fix their sampling
+        parameters (sending one is an error), so repeated runs differ through the model's
+        default sampling.
+        """
         ...
 
 
@@ -110,22 +118,28 @@ class DbCallRecorder:
 
 
 class AnthropicProvider:
-    def __init__(self, *, api_key: str, model: str, timeout: float) -> None:
+    def __init__(self, *, api_key: str, model: str, timeout: float, effort: str = "") -> None:
         self.model = model
+        self._effort = effort
         # SDK retries are disabled: LLMClient owns the retry policy.
         self._client = anthropic.AsyncAnthropic(api_key=api_key, timeout=timeout, max_retries=0)
 
     async def complete(
-        self, *, system: str, messages: list[Message], max_tokens: int, temperature: float
+        self, *, system: str, messages: list[Message], max_tokens: int
     ) -> LLMResponse:
+        # Thinking is on by default and its tokens count toward max_tokens, so callers
+        # must leave generous headroom or the JSON reply gets cut off.
+        extra = {"output_config": {"effort": self._effort}} if self._effort else {}
         try:
             response = await self._client.messages.create(
                 model=self.model,
                 system=system,
                 messages=messages,  # type: ignore[arg-type]
                 max_tokens=max_tokens,
-                temperature=temperature,
+                **extra,  # type: ignore[arg-type]
             )
+        except (anthropic.AuthenticationError, anthropic.PermissionDeniedError) as exc:
+            raise LLMConfigError(f"The Anthropic API rejected the API key: {exc.message}") from exc
         except (anthropic.RateLimitError, anthropic.APIConnectionError) as exc:
             # APITimeoutError is a subclass of APIConnectionError.
             raise TransientLLMError(str(exc)) from exc
@@ -134,6 +148,8 @@ class AnthropicProvider:
                 raise TransientLLMError(str(exc)) from exc
             raise LLMError(f"Anthropic API error {exc.status_code}: {exc.message}") from exc
 
+        if response.stop_reason == "refusal":
+            raise LLMError("The model declined this request.")
         text = "".join(block.text for block in response.content if block.type == "text")
         return LLMResponse(
             text=text,
@@ -186,8 +202,7 @@ class LLMClient:
         prompt: str,
         prompt_version: str,
         grading_id: int | None = None,
-        max_tokens: int = 4096,
-        temperature: float = 0.0,
+        max_tokens: int = DEFAULT_MAX_TOKENS,
     ) -> T:
         """Call the model and parse its reply into `schema`.
 
@@ -205,7 +220,6 @@ class LLMClient:
                 system=system,
                 messages=messages,
                 max_tokens=max_tokens,
-                temperature=temperature,
             )
             latency_ms = int((time.monotonic() - started) * 1000)
             try:
@@ -242,13 +256,12 @@ class LLMClient:
         system: str,
         messages: list[Message],
         max_tokens: int,
-        temperature: float,
     ) -> LLMResponse:
         for attempt in range(self._max_retries + 1):
             started = time.monotonic()
             try:
                 return await self.provider.complete(
-                    system=system, messages=messages, max_tokens=max_tokens, temperature=temperature
+                    system=system, messages=messages, max_tokens=max_tokens
                 )
             except LLMError as exc:
                 latency_ms = int((time.monotonic() - started) * 1000)
@@ -299,5 +312,6 @@ def build_llm_client(settings: Settings, recorder: CallRecorder) -> LLMClient:
         api_key=settings.anthropic_api_key,
         model=settings.anthropic_model,
         timeout=settings.llm_timeout_seconds,
+        effort=settings.anthropic_effort,
     )
     return LLMClient(provider, recorder, max_retries=settings.llm_max_retries)

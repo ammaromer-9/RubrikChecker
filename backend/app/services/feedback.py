@@ -146,8 +146,6 @@ async def generate_feedback(
                 prompt=render(notice),
                 prompt_version=prompt.version,
                 grading_id=grading_id,
-                max_tokens=1500,
-                temperature=0.3,
             )
         except LLMError as exc:
             logger.warning("Feedback generation failed for %s: %s", criterion.id, exc)

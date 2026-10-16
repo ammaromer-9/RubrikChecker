@@ -1,31 +1,28 @@
-import { useEffect, useState } from "react";
+import { Link, Route, Routes } from "react-router-dom";
 
-import { api, type HealthResponse } from "./api/client";
+import NewAssignmentPage from "./pages/NewAssignmentPage";
+import ResultsPage from "./pages/ResultsPage";
+import ReviewRubricPage from "./pages/ReviewRubricPage";
+import SubmitDraftPage from "./pages/SubmitDraftPage";
 
 export default function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api.health().then(setHealth).catch((e: Error) => setError(e.message));
-  }, []);
-
   return (
-    <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-3xl font-bold">RubricCheck</h1>
-      <p className="mt-2 text-slate-600">Pre-submission grading assistant for students.</p>
-      <p className="mt-6 text-sm">
-        Backend:{" "}
-        {error ? (
-          <span className="text-red-600">unreachable ({error})</span>
-        ) : health ? (
-          <span className="text-green-700">
-            {health.status} (database: {health.database})
-          </span>
-        ) : (
-          "checking…"
-        )}
-      </p>
-    </main>
+    <div className="min-h-screen">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+          <Link to="/" className="text-lg font-bold tracking-tight text-indigo-700">RubricCheck</Link>
+          <span className="hidden text-sm text-slate-500 sm:inline">Pre-submission feedback that never writes it for you</span>
+        </div>
+      </header>
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        <Routes>
+          <Route path="/" element={<NewAssignmentPage />} />
+          <Route path="/assignments/:id/rubric" element={<ReviewRubricPage />} />
+          <Route path="/assignments/:id/submit" element={<SubmitDraftPage />} />
+          <Route path="/gradings/:id" element={<ResultsPage />} />
+          <Route path="*" element={<p className="text-slate-700">Page not found. <Link className="text-indigo-700 underline" to="/">Go home</Link></p>} />
+        </Routes>
+      </main>
+    </div>
   );
 }

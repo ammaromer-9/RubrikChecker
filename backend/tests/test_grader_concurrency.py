@@ -15,7 +15,7 @@ class TrackingProvider:
         self.peak = 0
         self.total = 0
 
-    async def complete(self, *, system, messages, max_tokens, temperature) -> LLMResponse:
+    async def complete(self, *, system, messages, max_tokens) -> LLMResponse:
         self.in_flight += 1
         self.total += 1
         self.peak = max(self.peak, self.in_flight)
@@ -31,7 +31,7 @@ async def run(concurrency: int) -> TrackingProvider:
     llm = LLMClient(provider, InMemoryCallRecorder())
     runs = await grade_all_criteria(
         llm, Rubric.model_validate(RUBRIC), instructions="x", draft=DRAFT,
-        num_runs=3, temperature=0.7, concurrency=concurrency, grading_id=None,
+        num_runs=3, concurrency=concurrency, grading_id=None,
     )
     assert {k: len(v) for k, v in runs.items()} == {"thesis": 3, "support": 3}
     return provider

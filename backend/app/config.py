@@ -14,10 +14,11 @@ class Settings(BaseSettings):
     )
     anthropic_api_key: str = ""
     anthropic_model: str = ""
+    # Thinking depth: low | medium | high | xhigh | max. Empty uses the model's default.
+    anthropic_effort: str = "medium"
     llm_timeout_seconds: float = 60.0
     llm_max_retries: int = 3
     grading_runs: int = 3
-    grading_temperature: float = 0.7
     grading_concurrency: int = 5
     feedback_max_quoted_words: int = 25
     max_draft_chars: int = 50_000

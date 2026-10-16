@@ -35,7 +35,7 @@ class FakeLLMProvider:
         self._replies.extend(replies)
 
     async def complete(
-        self, *, system: str, messages: list[Message], max_tokens: int, temperature: float
+        self, *, system: str, messages: list[Message], max_tokens: int
     ) -> LLMResponse:
         self.calls.append((system, messages))
         if self._handler is not None:

@@ -70,7 +70,6 @@ async def grade_criterion_once(
     instructions: str,
     draft: str,
     criterion: Criterion,
-    temperature: float,
     grading_id: int | None,
 ) -> CriterionRun:
     prompt = load_prompt("grade_criterion")
@@ -88,8 +87,6 @@ async def grade_criterion_once(
         ),
         prompt_version=prompt.version,
         grading_id=grading_id,
-        max_tokens=2048,
-        temperature=temperature,
     )
     # The rubric, not the model, is the source of truth for what a level is worth.
     level = next(lvl for lvl in criterion.levels if lvl.label == grade.level_label)
@@ -103,7 +100,6 @@ async def grade_all_criteria(
     instructions: str,
     draft: str,
     num_runs: int,
-    temperature: float,
     concurrency: int,
     grading_id: int | None,
 ) -> dict[str, list[CriterionRun]]:
@@ -115,7 +111,7 @@ async def grade_all_criteria(
         async with semaphore:
             return await grade_criterion_once(
                 llm, instructions=instructions, draft=draft, criterion=criterion,
-                temperature=temperature, grading_id=grading_id,
+                grading_id=grading_id,
             )
 
     jobs = [(c, one(c)) for c in rubric.criteria for _ in range(num_runs)]
@@ -226,7 +222,7 @@ async def run_grading(
 
         runs = await grade_all_criteria(
             llm, rubric, instructions=assignment.instructions_text, draft=submission.draft_text,
-            num_runs=runs_wanted, temperature=settings.grading_temperature,
+            num_runs=runs_wanted,
             concurrency=settings.grading_concurrency, grading_id=grading_id,
         )
         graded = aggregate_runs(rubric, runs, submission.draft_text)

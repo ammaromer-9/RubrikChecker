@@ -1,16 +1,73 @@
-export interface HealthResponse {
-  status: string;
-  database: string;
+import type { Assignment, Grading, NewAssignment, Rubric, Submission } from "./types";
+
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+/** FastAPI sends `detail` as a string, or as a list of validation problems. */
+async function readError(response: Response): Promise<string> {
+  try {
+    const body = await response.json();
+    if (typeof body.detail === "string") return body.detail;
+    if (Array.isArray(body.detail)) {
+      return body.detail
+        .map((d: { msg?: string; loc?: unknown[] }) =>
+          d.loc ? `${d.loc.slice(1).join(".")}: ${d.msg}` : String(d.msg),
+        )
+        .join("; ");
+    }
+  } catch {
+    // not JSON
+  }
+  return `Request failed (${response.status}).`;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, init);
-  if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+  let response: Response;
+  try {
+    response = await fetch(`/api${path}`, init);
+  } catch {
+    throw new ApiError(0, "Could not reach the server. Is the backend running?");
   }
+  if (!response.ok) throw new ApiError(response.status, await readError(response));
   return (await response.json()) as T;
 }
 
+function json(method: string, body?: unknown): RequestInit {
+  return {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  };
+}
+
 export const api = {
-  health: () => request<HealthResponse>("/health"),
+  health: () => request<{ status: string; database: string }>("/health"),
+
+  extractFile: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<{ filename: string; text: string; char_count: number }>("/files/extract", {
+      method: "POST",
+      body: form,
+    });
+  },
+
+  createAssignment: (body: NewAssignment) => request<Assignment>("/assignments", json("POST", body)),
+  getAssignment: (id: number) => request<Assignment>(`/assignments/${id}`),
+  parseRubric: (id: number) => request<Assignment>(`/assignments/${id}/parse-rubric`, json("POST")),
+  confirmRubric: (id: number, rubric: Rubric) =>
+    request<Assignment>(`/assignments/${id}/rubric`, json("PUT", rubric)),
+
+  createSubmission: (assignmentId: number, draftText: string) =>
+    request<Submission>(`/assignments/${assignmentId}/submissions`, json("POST", { draft_text: draftText })),
+  gradeSubmission: (submissionId: number) =>
+    request<Grading>(`/submissions/${submissionId}/grade`, json("POST")),
+  getGrading: (id: number) => request<Grading>(`/gradings/${id}`),
 };
