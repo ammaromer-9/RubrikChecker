@@ -8,10 +8,10 @@ import ResultsView from "./ResultsView";
 
 const scrollIntoView = vi.fn();
 
-function renderResults(overrides = {}) {
+function renderResults(overrides = {}, props: Partial<React.ComponentProps<typeof ResultsView>> = {}) {
   return render(
     <MemoryRouter>
-      <ResultsView grading={{ ...grading, ...overrides }} />
+      <ResultsView grading={{ ...grading, ...overrides }} {...props} />
     </MemoryRouter>,
   );
 }
@@ -120,5 +120,19 @@ describe("ResultsView", () => {
     expect(screen.getByTestId("overall")).toHaveTextContent("13/16");
     expect(screen.getByTestId("overall")).not.toHaveTextContent("likely");
     expect(screen.getByText(/1 independent grading run per criterion/)).toBeInTheDocument();
+  });
+
+  it("links to revision history, and to a comparison only when there is an earlier graded version", () => {
+    renderResults();
+    expect(screen.getByRole("link", { name: "Revision history" })).toHaveAttribute("href", "/assignments/2/history");
+    expect(screen.queryByRole("link", { name: /See what changed/ })).not.toBeInTheDocument();
+  });
+
+  it("offers 'what changed' for a later version", () => {
+    renderResults({ version_number: 2 }, { previousSubmissionId: 2, previousVersionNumber: 1 });
+    expect(screen.getByRole("link", { name: "See what changed since version 1" })).toHaveAttribute(
+      "href",
+      "/submissions/3/compare/2",
+    );
   });
 });

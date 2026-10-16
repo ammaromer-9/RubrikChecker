@@ -85,3 +85,76 @@ export const grading: Grading = {
     { criterion_id: "support", name: "Evidence & Support", points_at_stake: 3, summary: "The evidence is general rather than specific." },
   ],
 };
+
+// --- Revisions ---
+
+import type { Comparison, History } from "../api/types";
+
+export const comparison: Comparison = {
+  assignment_id: 2,
+  previous: { submission_id: 3, version_number: 1, grading_id: 7 },
+  current: { submission_id: 4, version_number: 2, grading_id: 8 },
+  overall: {
+    previous_median: 8, current_median: 13, change: 5,
+    previous_min: 5, previous_max: 9, current_min: 12, current_max: 14, max_possible: 16,
+    ranges_overlap: false,
+  },
+  criteria: [
+    {
+      criterion_id: "thesis", name: "Thesis", max_points: 10, previous_points: 5, current_points: 10,
+      change: 5, status: "improved", ranges_overlap: false, uncertain: false, resolved: true,
+      issue: "The thesis is vague.",
+    },
+    {
+      criterion_id: "support", name: "Evidence & Support", max_points: 6, previous_points: 3, current_points: 3,
+      change: 0, status: "unchanged", ranges_overlap: true, uncertain: true, resolved: false,
+      issue: "Evidence is general.",
+    },
+    {
+      criterion_id: "style", name: "Style", max_points: 4, previous_points: 4, current_points: 3,
+      change: -1, status: "declined", ranges_overlap: true, uncertain: false, resolved: false, issue: null,
+    },
+    {
+      criterion_id: "extra", name: "Extra credit", max_points: 2, previous_points: null, current_points: 1,
+      change: null, status: "new", ranges_overlap: false, uncertain: false, resolved: false, issue: null,
+    },
+  ],
+  resolved_issues: [{ criterion_id: "thesis", name: "Thesis", issue: "The thesis is vague.", points_gained: 5 }],
+  requirement_changes: [
+    { description: "At least 50 words", previously_passed: false, now_passed: true, status: "resolved", details: "Draft has 80 words." },
+    { description: "Include a conclusion", previously_passed: true, now_passed: false, status: "regressed", details: "Missing section(s): Conclusion." },
+  ],
+  remaining_fixes: [
+    { criterion_id: "support", name: "Evidence & Support", points_at_stake: 3, summary: "Evidence is general." },
+  ],
+  improved_count: 1,
+  declined_count: 1,
+  unchanged_count: 1,
+};
+
+export const history: History = {
+  assignment_id: 2,
+  title: "Persuasive essay",
+  max_possible: 16,
+  criteria: [
+    { criterion_id: "thesis", name: "Thesis", max_points: 10 },
+    { criterion_id: "support", name: "Evidence & Support", max_points: 6 },
+  ],
+  versions: [
+    {
+      submission_id: 3, version_number: 1, created_at: "2026-10-15T10:00:00Z",
+      grading: {
+        grading_id: 7, overall: { median: 8, min: 5, max: 9, max_possible: 16 },
+        criterion_points: { thesis: 5, support: 3 }, uncertain: ["support"],
+      },
+    },
+    {
+      submission_id: 4, version_number: 2, created_at: "2026-10-15T11:00:00Z",
+      grading: {
+        grading_id: 8, overall: { median: 13, min: 12, max: 14, max_possible: 16 },
+        criterion_points: { thesis: 10, support: 3 }, uncertain: [],
+      },
+    },
+    { submission_id: 5, version_number: 3, created_at: "2026-10-15T12:00:00Z", grading: null },
+  ],
+};

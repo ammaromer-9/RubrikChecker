@@ -115,3 +115,81 @@ export interface Grading {
   instruction_checks: CheckResult[];
   top_fixes: TopFix[];
 }
+
+// --- Revisions ---
+
+export interface VersionRef {
+  submission_id: number;
+  version_number: number;
+  grading_id: number;
+}
+
+export type ChangeStatus = "improved" | "declined" | "unchanged" | "new" | "removed";
+
+export interface CriterionChange {
+  criterion_id: string;
+  name: string;
+  max_points: number;
+  previous_points: number | null;
+  current_points: number | null;
+  change: number | null;
+  status: ChangeStatus;
+  ranges_overlap: boolean;
+  uncertain: boolean;
+  resolved: boolean;
+  issue: string | null;
+}
+
+export type RequirementStatus = "resolved" | "regressed" | "still_failing" | "still_passing" | "new" | "removed";
+
+export interface RequirementChange {
+  description: string;
+  previously_passed: boolean | null;
+  now_passed: boolean | null;
+  status: RequirementStatus;
+  details: string;
+}
+
+export interface Comparison {
+  assignment_id: number;
+  previous: VersionRef;
+  current: VersionRef;
+  overall: {
+    previous_median: number;
+    current_median: number;
+    change: number;
+    previous_min: number;
+    previous_max: number;
+    current_min: number;
+    current_max: number;
+    max_possible: number;
+    ranges_overlap: boolean;
+  };
+  criteria: CriterionChange[];
+  resolved_issues: { criterion_id: string; name: string; issue: string; points_gained: number }[];
+  requirement_changes: RequirementChange[];
+  remaining_fixes: TopFix[];
+  improved_count: number;
+  declined_count: number;
+  unchanged_count: number;
+}
+
+export interface HistoryVersion {
+  submission_id: number;
+  version_number: number;
+  created_at: string;
+  grading: {
+    grading_id: number;
+    overall: Grading["overall"];
+    criterion_points: Record<string, number>;
+    uncertain: string[];
+  } | null;
+}
+
+export interface History {
+  assignment_id: number;
+  title: string;
+  max_possible: number | null;
+  criteria: { criterion_id: string; name: string; max_points: number }[];
+  versions: HistoryVersion[];
+}

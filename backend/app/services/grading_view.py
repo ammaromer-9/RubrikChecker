@@ -96,3 +96,25 @@ def build_grading_read(grading: Grading) -> GradingRead:
     )
 
 
+
+
+async def load_latest_complete_gradings(
+    session: AsyncSession, assignment_id: int
+) -> dict[int, Grading]:
+    """The newest complete grading for each submission of an assignment, by submission id."""
+    result = await session.execute(
+        select(Grading)
+        .join(Submission, Grading.submission_id == Submission.id)
+        .where(Submission.assignment_id == assignment_id, Grading.status == "complete")
+        .order_by(Grading.id)
+        .options(
+            selectinload(Grading.criterion_results),
+            selectinload(Grading.instruction_check_results),
+            joinedload(Grading.submission).joinedload(Submission.assignment),
+        )
+        .execution_options(populate_existing=True)
+    )
+    latest: dict[int, Grading] = {}
+    for grading in result.scalars():
+        latest[grading.submission_id] = grading  # ordered by id, so later gradings win
+    return latest

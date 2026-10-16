@@ -33,7 +33,14 @@ function InstructionChecklist({ checks }: { checks: CheckResult[] }) {
   );
 }
 
-export default function ResultsView({ grading }: { grading: Grading }) {
+interface Props {
+  grading: Grading;
+  /** Submission id of the version before this one, when it has a graded earlier version. */
+  previousSubmissionId?: number;
+  previousVersionNumber?: number;
+}
+
+export default function ResultsView({ grading, previousSubmissionId, previousVersionNumber }: Props) {
   const draftRef = useRef<HTMLDivElement>(null);
   const [flash, setFlash] = useState<string | null>(null);
 
@@ -68,9 +75,17 @@ export default function ResultsView({ grading }: { grading: Grading }) {
           A prediction from {grading.num_runs} independent grading run{grading.num_runs === 1 ? "" : "s"} per criterion, not your real grade.
           {uncertainCount > 0 && ` ${uncertainCount} criteri${uncertainCount === 1 ? "on is" : "a are"} marked uncertain.`}
         </p>
-        <div className="mt-3">
-          <Link className="text-sm text-indigo-700 underline" to={`/assignments/${grading.assignment_id}/submit`}>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          {previousSubmissionId !== undefined && (
+            <Link className="font-medium text-indigo-700 underline" to={`/submissions/${grading.submission_id}/compare/${previousSubmissionId}`}>
+              See what changed since version {previousVersionNumber}
+            </Link>
+          )}
+          <Link className="text-indigo-700 underline" to={`/assignments/${grading.assignment_id}/submit`}>
             Submit a new version
+          </Link>
+          <Link className="text-indigo-700 underline" to={`/assignments/${grading.assignment_id}/history`}>
+            Revision history
           </Link>
         </div>
       </section>

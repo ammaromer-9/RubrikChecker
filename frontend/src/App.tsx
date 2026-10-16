@@ -1,5 +1,7 @@
 import { Link, Route, Routes } from "react-router-dom";
 
+import ComparePage from "./pages/ComparePage";
+import HistoryPage from "./pages/HistoryPage";
 import NewAssignmentPage from "./pages/NewAssignmentPage";
 import ResultsPage from "./pages/ResultsPage";
 import ReviewRubricPage from "./pages/ReviewRubricPage";
@@ -20,6 +22,8 @@ export default function App() {
           <Route path="/assignments/:id/rubric" element={<ReviewRubricPage />} />
           <Route path="/assignments/:id/submit" element={<SubmitDraftPage />} />
           <Route path="/gradings/:id" element={<ResultsPage />} />
+          <Route path="/assignments/:id/history" element={<HistoryPage />} />
+          <Route path="/submissions/:id/compare/:previousId" element={<ComparePage />} />
           <Route path="*" element={<p className="text-slate-700">Page not found. <Link className="text-indigo-700 underline" to="/">Go home</Link></p>} />
         </Routes>
       </main>

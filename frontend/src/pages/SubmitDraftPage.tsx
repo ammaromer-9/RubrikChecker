@@ -54,6 +54,9 @@ export default function SubmitDraftPage() {
         title="Submit your draft"
         subtitle={`${assignment.data.title}: paste or upload your draft. We'll predict a score and show you where to improve. We never rewrite your work.`}
       />
+      <p className="-mt-3 mb-6 text-sm">
+        <Link className="text-indigo-700 underline" to={`/assignments/${id}/history`}>View earlier versions</Link>
+      </p>
       <form
         className="space-y-6"
         onSubmit={(e) => {

@@ -2,7 +2,7 @@
 
 A pre-submission grading assistant for students. Paste the assignment instructions, the rubric and a draft. RubricCheck predicts a score per rubric criterion with a range, highlights the evidence in the draft, and gives feedback that helps you improve without writing the work for you.
 
-> Status: Phase 4 (grading and feedback backend). Features land phase by phase.
+> Status: Phase 6 (grading, frontend, revisions). Features land phase by phase.
 
 ## Stack
 

@@ -10,3 +10,9 @@ export function formatOverall(o: { median: number | null; min: number | null; ma
   if (o.min === null || o.max === null || o.min === o.max) return base;
   return `${base}, likely ${fmt(o.min)}–${fmt(o.max)}`;
 }
+
+/** +2, \u22121.5, 0 (uses a real minus sign). */
+export function fmtDelta(n: number): string {
+  if (Math.abs(n) < 1e-9) return "0";
+  return `${n > 0 ? "+" : "\u2212"}${fmt(Math.abs(n))}`;
+}

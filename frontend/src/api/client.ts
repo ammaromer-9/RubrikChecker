@@ -1,4 +1,4 @@
-import type { Assignment, Grading, NewAssignment, Rubric, Submission } from "./types";
+import type { Assignment, Comparison, Grading, History, NewAssignment, Rubric, Submission } from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -70,4 +70,8 @@ export const api = {
   gradeSubmission: (submissionId: number) =>
     request<Grading>(`/submissions/${submissionId}/grade`, json("POST")),
   getGrading: (id: number) => request<Grading>(`/gradings/${id}`),
+
+  getHistory: (assignmentId: number) => request<History>(`/assignments/${assignmentId}/history`),
+  compare: (submissionId: number, previousId: number) =>
+    request<Comparison>(`/submissions/${submissionId}/compare/${previousId}`),
 };

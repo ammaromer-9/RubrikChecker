@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fmt, formatOverall } from "./format";
+import { fmt, fmtDelta, formatOverall } from "./format";
 
 describe("formatOverall", () => {
   it("shows the score with its likely range", () => {
@@ -17,5 +17,11 @@ describe("formatOverall", () => {
 describe("fmt", () => {
   it("trims needless decimals", () => {
     expect([fmt(8), fmt(7.5), fmt(7.333), fmt(8.0)]).toEqual(["8", "7.5", "7.3", "8"]);
+  });
+});
+
+describe("fmtDelta", () => {
+  it("signs changes with a real minus sign and treats ~0 as zero", () => {
+    expect([fmtDelta(2), fmtDelta(-1.5), fmtDelta(0), fmtDelta(1e-12)]).toEqual(["+2", "\u22121.5", "0", "0"]);
   });
 });
