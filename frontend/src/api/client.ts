@@ -1,5 +1,9 @@
 import type { Assignment, Comparison, Grading, History, NewAssignment, Rubric, Submission } from "./types";
 
+// In development Vite proxies /api to the backend. In production, set VITE_API_BASE_URL at
+// build time if the API is on a different origin (leave it empty to use the same origin).
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -31,7 +35,7 @@ async function readError(response: Response): Promise<string> {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`/api${path}`, init);
+    response = await fetch(`${API_BASE}/api${path}`, init);
   } catch {
     throw new ApiError(0, "Could not reach the server. Is the backend running?");
   }

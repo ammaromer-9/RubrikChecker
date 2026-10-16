@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
@@ -48,15 +49,30 @@ async def create_submission(
             status.HTTP_413_CONTENT_TOO_LARGE,
             f"Draft is {len(body.draft_text)} characters; the limit is {settings.max_draft_chars}.",
         )
-    latest = await session.scalar(
-        select(func.max(Submission.version_number)).where(Submission.assignment_id == assignment.id)
+    # Two drafts submitted at the same instant can pick the same version number; the
+    # unique constraint catches that and we retry with the next number.
+    assignment_id = assignment.id  # read now: a rollback expires the ORM object
+    for _ in range(3):
+        latest = await session.scalar(
+            select(func.max(Submission.version_number)).where(
+                Submission.assignment_id == assignment_id
+            )
+        )
+        submission = Submission(
+            assignment_id=assignment_id,
+            version_number=(latest or 0) + 1,
+            draft_text=body.draft_text,
+        )
+        session.add(submission)
+        try:
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            continue
+        return submission
+    raise HTTPException(
+        status.HTTP_409_CONFLICT, "Several drafts were submitted at once. Please try again."
     )
-    submission = Submission(
-        assignment_id=assignment.id, version_number=(latest or 0) + 1, draft_text=body.draft_text
-    )
-    session.add(submission)
-    await session.commit()
-    return submission
 
 
 @router.get("/submissions/{submission_id}", response_model=SubmissionRead)

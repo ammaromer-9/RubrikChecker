@@ -15,5 +15,19 @@ services:
       interval: 5s
       retries: 10
 
+  # The API in a container: docker compose --profile full up -d
+  # First run: docker compose --profile full run --rm api alembic upgrade head
+  api:
+    profiles: ["full"]
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://rubriccheck:rubriccheck@db:5432/rubriccheck
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
 volumes:
   pgdata:

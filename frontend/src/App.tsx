@@ -1,5 +1,6 @@
 import { Link, Route, Routes } from "react-router-dom";
 
+import ErrorBoundary from "./components/ErrorBoundary";
 import ComparePage from "./pages/ComparePage";
 import HistoryPage from "./pages/HistoryPage";
 import NewAssignmentPage from "./pages/NewAssignmentPage";
@@ -17,6 +18,7 @@ export default function App() {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8">
+        <ErrorBoundary>
         <Routes>
           <Route path="/" element={<NewAssignmentPage />} />
           <Route path="/assignments/:id/rubric" element={<ReviewRubricPage />} />
@@ -26,6 +28,7 @@ export default function App() {
           <Route path="/submissions/:id/compare/:previousId" element={<ComparePage />} />
           <Route path="*" element={<p className="text-slate-700">Page not found. <Link className="text-indigo-700 underline" to="/">Go home</Link></p>} />
         </Routes>
+        </ErrorBoundary>
       </main>
     </div>
   );

@@ -24,6 +24,12 @@ describe("api client", () => {
     await expect(api.confirmRubric(1, { criteria: [] })).rejects.toThrow("criteria: List should have at least 1 item");
   });
 
+  it("calls the same-origin /api path by default", async () => {
+    mockFetch(200, { status: "ok", database: "ok" });
+    await api.health();
+    expect(vi.mocked(fetch).mock.calls[0][0]).toBe("/api/health");
+  });
+
   it("explains when the backend is unreachable", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
     const error = await api.health().catch((e) => e);
