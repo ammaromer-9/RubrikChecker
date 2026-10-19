@@ -34,7 +34,7 @@ export default function ComparisonView({ comparison }: { comparison: Comparison 
     <div className="space-y-6">
       <section aria-label="Overall change" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <p className="text-sm uppercase tracking-wide text-slate-500">
-          Version {previous.version_number} &rarr; version {current.version_number}
+          Attempt {previous.version_number} &rarr; attempt {current.version_number}
         </p>
         <p className="mt-1 text-3xl font-bold" data-testid="overall-change">
           {fmt(overall.previous_median)} &rarr; {fmt(overall.current_median)}
@@ -46,21 +46,21 @@ export default function ComparisonView({ comparison }: { comparison: Comparison 
         {direction !== "flat" && (
           <p className="mt-2 text-sm text-slate-700" data-testid="noise-note">
             {overall.ranges_overlap
-              ? "The score ranges of the two versions overlap, so part of this change may just be normal variation between grading runs. Treat it as a hint, not proof."
+              ? "The score ranges of the two attempts overlap, so part of this change may just be normal variation between grading runs. Treat it as a hint, not proof."
               : `The score ranges don't overlap, so this ${direction === "up" ? "improvement" : "drop"} is likely real.`}
           </p>
         )}
         {comparison.strictness_differs && (
           <p role="note" data-testid="strictness-warning" className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            These versions were graded for different teachers (version {previous.version_number}:{" "}
-            {strictnessLabel(previous.strictness).toLowerCase()}, version {current.version_number}:{" "}
+            These attempts were graded for different teachers (attempt {previous.version_number}:{" "}
+            {strictnessLabel(previous.strictness).toLowerCase()}, attempt {current.version_number}:{" "}
             {strictnessLabel(current.strictness).toLowerCase()}), so part of this change may come from that setting rather
-            than from your edits. Grade one version again with the same setting for a fair comparison.
+            than from your edits. Grade one attempt again with the same setting for a fair comparison.
           </p>
         )}
         <p className="mt-2 flex flex-wrap gap-3 text-sm">
-          <Link className="text-indigo-700 underline" to={`/gradings/${current.grading_id}`}>Full results for version {current.version_number}</Link>
-          <Link className="text-indigo-700 underline" to={`/assignments/${comparison.assignment_id}/history`}>Revision history</Link>
+          <Link className="text-indigo-700 underline" to={`/gradings/${current.grading_id}`}>Full results for attempt {current.version_number}</Link>
+          <Link className="text-indigo-700 underline" to={`/projects/${comparison.assignment_id}`}>All attempts</Link>
         </p>
       </section>
 
@@ -90,8 +90,8 @@ export default function ComparisonView({ comparison }: { comparison: Comparison 
             <thead className="text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="py-1 pr-3">Criterion</th>
-                <th className="py-1 pr-3">V{previous.version_number}</th>
-                <th className="py-1 pr-3">V{current.version_number}</th>
+                <th className="py-1 pr-3">Attempt {previous.version_number}</th>
+                <th className="py-1 pr-3">Attempt {current.version_number}</th>
                 <th className="py-1">Change</th>
               </tr>
             </thead>
@@ -143,7 +143,7 @@ export default function ComparisonView({ comparison }: { comparison: Comparison 
       <section aria-label="Still to fix" className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
         <h2 className="text-lg font-semibold text-indigo-950">Still to fix</h2>
         {comparison.remaining_fixes.length === 0 ? (
-          <p className="mt-1 text-sm text-indigo-900">Nothing is costing points in version {current.version_number}.</p>
+          <p className="mt-1 text-sm text-indigo-900">Nothing is costing points in attempt {current.version_number}.</p>
         ) : (
           <ol className="mt-2 space-y-2 text-sm">
             {comparison.remaining_fixes.map((fix, i) => (

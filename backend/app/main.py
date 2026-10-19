@@ -9,7 +9,7 @@ from sqlalchemy.exc import InterfaceError, OperationalError
 
 from app.config import get_settings
 from app.db import SessionLocal
-from app.routers import assignments, files, gradings, health, submissions
+from app.routers import assignments, auth, files, gradings, health, submissions
 from app.services.llm_client import LLMConfigError, LLMError, LLMOutputError, TransientLLMError
 from app.services.maintenance import fail_stale_gradings
 
@@ -32,9 +32,24 @@ app = FastAPI(title="RubricCheck API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
+    allow_credentials=True,  # the session cookie; origins are an explicit list, never "*"
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def check_origin(request: Request, call_next):  # type: ignore[no-untyped-def]
+    """Refuse state-changing requests from a website we don't know.
+
+    The session cookie is SameSite=Lax, which already blocks cross-site POSTs in modern
+    browsers; this is a second layer. Requests with no Origin header (curl, tests, server
+    to server) are not browser requests and pass.
+    """
+    origin = request.headers.get("origin")
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"} and origin and origin not in settings.cors_origin_list:
+        return JSONResponse(status_code=403, content={"detail": "This request came from an origin that is not allowed."})
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -54,6 +69,7 @@ async def limit_request_size(request: Request, call_next):  # type: ignore[no-un
 
 
 app.include_router(health.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
 app.include_router(files.router, prefix="/api")
 app.include_router(assignments.router, prefix="/api")
 app.include_router(submissions.router, prefix="/api")

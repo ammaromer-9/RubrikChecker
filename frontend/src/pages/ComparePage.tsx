@@ -14,7 +14,7 @@ export default function ComparePage() {
     queryFn: () => api.compare(id, previousId),
   });
 
-  if (comparison.isPending) return <LoadingPanel title="Comparing versions…" />;
+  if (comparison.isPending) return <LoadingPanel title="Comparing attempts…" />;
   if (comparison.isError) return <ErrorBanner message={comparison.error.message} />;
   return (
     <>

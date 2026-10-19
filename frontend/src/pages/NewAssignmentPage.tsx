@@ -16,7 +16,7 @@ export default function NewAssignmentPage() {
     mutationFn: () =>
       api.createAssignment({ title, instructions_text: instructions, rubric_raw_text: rubric }),
     onSuccess: (assignment) =>
-      navigate(`/assignments/${assignment.id}/rubric`, { state: { autoParse: true } }),
+      navigate(`/projects/${assignment.id}/rubric`, { state: { autoParse: true } }),
   });
 
   const ready = title.trim() && instructions.trim() && rubric.trim();
@@ -24,8 +24,8 @@ export default function NewAssignmentPage() {
   return (
     <>
       <PageHeader
-        title="Check your draft before you submit it"
-        subtitle="Add your assignment instructions and rubric. You'll review how we read the rubric before anything is graded."
+        title="New project"
+        subtitle="Name your project, then add the assignment instructions and rubric. You'll review how the rubric was read before anything is graded."
       />
       <form
         className="space-y-6"
@@ -35,12 +35,12 @@ export default function NewAssignmentPage() {
         }}
       >
         <label className="block text-sm font-medium text-slate-800">
-          Assignment title
+          Project name
           <input
             className="mt-1 block w-full rounded-md border border-slate-300 bg-white p-2.5 font-normal shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Persuasive essay on school phone policies"
+            placeholder="e.g. English essay on school phone policies"
           />
         </label>
         <FileOrTextInput

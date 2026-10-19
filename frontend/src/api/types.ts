@@ -1,5 +1,31 @@
 // Mirrors the backend Pydantic schemas (backend/app/schemas).
 
+export interface User {
+  id: number;
+  email: string;
+  display_name: string;
+  created_at: string;
+}
+
+export interface ProjectSummary {
+  id: number;
+  title: string;
+  created_at: string;
+  rubric_confirmed: boolean;
+  teacher_strictness: Strictness;
+  attempts: number;
+  graded_attempts: number;
+  /** The newest graded attempt, with the change from the graded attempt before it. */
+  latest: {
+    version_number: number;
+    median: number;
+    min: number;
+    max: number;
+    max_possible: number;
+    change: number | null;
+  } | null;
+}
+
 export type Strictness = "lenient" | "standard" | "strict";
 
 export interface Level {

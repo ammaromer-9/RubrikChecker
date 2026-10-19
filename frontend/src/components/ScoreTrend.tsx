@@ -11,7 +11,7 @@ const W = 480;
 const H = 190;
 const PAD = { left: 40, right: 20, top: 16, bottom: 32 };
 
-/** Overall score per graded version: a dot for the median and a bar for the likely range. */
+/** Overall score per graded attempt: a dot for the median and a bar for the likely range. */
 export default function ScoreTrend({ points, maxPossible }: { points: TrendPoint[]; maxPossible: number }) {
   if (points.length === 0) return null;
   const innerW = W - PAD.left - PAD.right;

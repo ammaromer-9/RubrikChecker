@@ -14,12 +14,12 @@ function renderComparison(overrides = {}) {
 }
 
 describe("ComparisonView", () => {
-  it("shows the overall change between versions", () => {
+  it("shows the overall change between attempts", () => {
     renderComparison();
     const overall = screen.getByTestId("overall-change");
     expect(overall).toHaveTextContent("8 → 13");
     expect(overall).toHaveTextContent("(+5)");
-    expect(screen.getByText(/Version 1 → version 2/)).toBeInTheDocument();
+    expect(screen.getByText(/Attempt 1 → attempt 2/)).toBeInTheDocument();
   });
 
   it("says the change is likely real when the score ranges do not overlap", () => {
@@ -84,23 +84,23 @@ describe("ComparisonView", () => {
 
   it("congratulates when nothing is left to fix", () => {
     renderComparison({ remaining_fixes: [] });
-    expect(screen.getByText(/Nothing is costing points in version 2/)).toBeInTheDocument();
+    expect(screen.getByText(/Nothing is costing points in attempt 2/)).toBeInTheDocument();
   });
 
   it("links to the full results and the history", () => {
     renderComparison();
-    expect(screen.getByRole("link", { name: /Full results for version 2/ })).toHaveAttribute("href", "/gradings/8");
-    expect(screen.getByRole("link", { name: "Revision history" })).toHaveAttribute("href", "/assignments/2/history");
+    expect(screen.getByRole("link", { name: /Full results for attempt 2/ })).toHaveAttribute("href", "/gradings/8");
+    expect(screen.getByRole("link", { name: "All attempts" })).toHaveAttribute("href", "/projects/2");
   });
 
-  it("warns when the two versions were graded for different teachers", () => {
+  it("warns when the two attempts were graded for different teachers", () => {
     renderComparison({
       strictness_differs: true,
       previous: { ...comparison.previous, strictness: "standard" },
       current: { ...comparison.current, strictness: "strict" },
     });
     const warning = screen.getByTestId("strictness-warning");
-    expect(warning).toHaveTextContent("version 1: standard, version 2: strict");
+    expect(warning).toHaveTextContent("attempt 1: standard, attempt 2: strict");
     expect(warning).toHaveTextContent(/part of this change may come from that setting/);
   });
 

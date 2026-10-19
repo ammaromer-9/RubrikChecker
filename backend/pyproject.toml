@@ -33,3 +33,4 @@ extend-exclude = ["alembic"]
 [tool.ruff.lint.per-file-ignores]
 # FastAPI idiom: Depends()/File() in argument defaults.
 "app/routers/*" = ["B008"]
+"app/security.py" = ["B008"]

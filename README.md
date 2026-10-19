@@ -5,7 +5,9 @@ A pre-submission grading assistant for students. Paste the assignment instructio
 - **Predicted score with an honest range**, e.g. "13/16, likely 5-16", from several independent grading runs, with criteria flagged *uncertain* when the runs disagree.
 - **Evidence you can check:** every score cites quotes, and each quote is verified against the draft in code, so a made-up quote is never shown as evidence.
 - **Feedback that coaches, not ghostwrites:** what is missing (in the rubric's own words), where, and guiding questions. A post-check blocks drafted text from reaching the student.
-- **Revisions:** submit new versions and see what improved, what was fixed, and whether a change is bigger than the grader's own noise.
+- **Accounts and projects:** sign in, make a named project per assignment, and keep every attempt with its score so you can watch it improve. Your projects are private to you.
+- **Revisions:** submit new attempts and see what improved, what was fixed, and whether a change is bigger than the grader's own noise.
+- **Light and dark mode**, with the switch always visible in the header.
 - **Calibration tooling** to measure how well the grader agrees with human graders, and to compare grading strategies and models.
 
 ## Screenshots
@@ -20,10 +22,11 @@ A pre-submission grading assistant for students. Paste the assignment instructio
 
 ## How it works
 
-1. **New assignment:** paste or upload (PDF, .docx, .txt) the instructions and the rubric.
+0. **Create an account and sign in** from the homepage. Your projects are listed on your dashboard with the latest score of each.
+1. **New project:** name it, then paste or upload (PDF, .docx, .txt) the assignment instructions and the rubric.
 2. **Review the rubric:** the rubric is converted to structured criteria and levels by the LLM, then shown in an editable table. Levels the model had to invent are flagged *inferred*. You also say **how tough your teacher is** (lenient, standard or strict). **Grading only ever uses the version you confirm.**
 3. **Submit a draft** and get results: score and range, instruction checklist, top 3 fixes, per-criterion cards, and the draft with evidence highlighted (green = meets, red = falls short; click either way to jump between draft and card).
-4. **Submit a new version** and compare: per-criterion changes, issues you fixed, and a score trend.
+4. **Make a new attempt** and compare: per-criterion changes, issues you fixed, and a score trend. A project page lists every attempt with its scores.
 
 ## Architecture
 
@@ -89,13 +92,27 @@ sequenceDiagram
 
 ```mermaid
 erDiagram
-  assignments ||--o{ submissions : "has versions"
+  users ||--o{ assignments : "owns (a project)"
+  users ||--o{ auth_sessions : "signed in as"
+  assignments ||--o{ submissions : "has attempts"
   submissions ||--o{ gradings : "graded by"
   gradings ||--o{ criterion_results : has
   gradings ||--o{ instruction_check_results : has
   gradings |o--o{ llm_calls : "cost and latency"
+  users {
+    int id
+    text email
+    text password_hash
+  }
+  auth_sessions {
+    text token_hash
+    datetime expires_at
+  }
   assignments {
     int id
+    int owner_id
+    text title
+    text teacher_strictness
     text instructions_text
     text rubric_raw_text
     jsonb rubric_parsed
@@ -170,6 +187,8 @@ npm install
 npm run dev
 ```
 
+Open http://localhost:5173 and create an account (the first time), then make a project. The server reads `.env` only when it starts, so **restart the backend after changing it**.
+
 To run the API in a container instead of step 3:
 
 ```bash
@@ -195,18 +214,30 @@ Everything is configured with environment variables (12-factor); see `.env.examp
 | `MAX_DRAFT_CHARS` | `50000` | Longest accepted draft |
 | `MAX_ASSIGNMENT_TEXT_CHARS` | `20000` | Longest accepted instructions or rubric |
 | `MAX_UPLOAD_BYTES` | `5242880` | Largest uploaded file |
-| `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated allowed origins |
+| `CORS_ORIGINS` | both `localhost:5173` and `127.0.0.1:5173` | Comma-separated allowed origins (also checked on every state-changing request) |
+| `SESSION_DAYS` | `30` | How long a sign-in lasts |
+| `COOKIE_SECURE` | `false` | Set `true` when served over HTTPS, so the session cookie is never sent over plain HTTP |
+| `ALLOW_REGISTRATION` | `true` | Set `false` to close sign-ups (existing users can still sign in) |
+| `MAX_PROJECTS_PER_USER` | `50` | Projects each user may keep |
+| `MAX_GRADINGS_PER_DAY` | `30` | Gradings each user may start per 24 hours (each costs model credits) |
 | `LOG_LEVEL` | `INFO` | Python log level |
 | `VITE_API_BASE_URL` | empty | Frontend build setting, only if the API is on another origin |
 
 ## API
 
-Interactive docs are served at `/docs`. All routes are under `/api`.
+Interactive docs are served at `/docs`. All routes are under `/api`, and **every route except `/health` and the sign-in/sign-up routes needs you to be signed in** (a session cookie). A project that isn't yours answers 404, the same as one that doesn't exist.
 
 | Method and path | Purpose |
 |---|---|
+| `POST /auth/register` | Create an account and sign in |
+| `POST /auth/login` | Sign in |
+| `POST /auth/logout` | Sign out (ends the session on the server) |
+| `GET /auth/me` | The signed-in user |
+| `GET /assignments` | Your projects, newest first, each with its attempt count and latest score |
+| `PATCH /assignments/{id}` | Rename a project |
+| `DELETE /assignments/{id}` | Delete a project with all its attempts and gradings |
 | `POST /files/extract` | Text from an uploaded PDF, .docx or .txt |
-| `POST /assignments` | Create an assignment (instructions and raw rubric) |
+| `POST /assignments` | Create a project (name, instructions and raw rubric) |
 | `GET /assignments/{id}` | Read it |
 | `POST /assignments/{id}/parse-rubric` | LLM converts the rubric to criteria and levels |
 | `PUT /assignments/{id}/rubric` | Save the user-edited rubric and mark it confirmed |
@@ -220,7 +251,7 @@ Interactive docs are served at `/docs`. All routes are under `/api`.
 | `GET /submissions/{id}/compare/{previous_id}` | What changed between two versions |
 | `GET /health` | Liveness and database check |
 
-Errors are JSON `{"detail": "..."}` with meaningful statuses: 404 unknown id, 409 rubric not confirmed or version not graded, 413 input too large, 422 invalid input, 502/503 when the AI service fails or is unavailable or not configured.
+Errors are JSON `{"detail": "..."}` with meaningful statuses: 401 not signed in, 403 closed sign-ups or a request from an unknown website, 404 unknown (or not yours), 409 rubric not confirmed, attempt not graded, or project limit reached, 413 input too large, 422 invalid input, 429 too many sign-in attempts or the daily grading limit, 502/503 when the AI service fails or is unavailable or not configured.
 
 ## How grading works
 
@@ -247,6 +278,11 @@ Errors are JSON `{"detail": "..."}` with meaningful statuses: 404 unknown id, 40
 | Log every model call | `llm_calls` records tokens, latency and failures, so cost and reliability are queryable. |
 | Mock the model in tests | Tests never call the real API; a fake provider plays the grader, feedback writer and parser. |
 | Teacher strictness only nudges borderline calls | The rubric stays the standard, so scores remain checkable. The setting is stored with every grading and flagged in comparisons so it can't be mistaken for improvement. |
+| Passwords hashed with scrypt, sessions in an HttpOnly cookie | scrypt is in Python's standard library (no extra dependency) and is deliberately slow and memory-hungry, which makes guessing expensive. Only a hash of the session token is stored, so a database leak can't be replayed. |
+| Someone else's project is a 404, not a 403 | The response doesn't reveal whether an id exists. |
+| SameSite cookie plus an Origin check | The cookie is not sent on cross-site POSTs, and state-changing requests from unknown origins are refused as a second layer. |
+| Per-user limits on gradings and projects | Anyone can sign up, and every grading spends model credits. |
+| Dark mode by remapping the colour palette | Tailwind's colours are CSS variables, so each shade takes its mirror's value under a `dark` class and every page follows with no per-component changes. |
 | Compare changes against grader noise | A version comparison says when a score change is inside the two versions' ranges and may not be real. |
 
 ## Academic-integrity design
@@ -306,7 +342,10 @@ The API ships as a container (`backend/Dockerfile`: non-root user, health check,
 
 ## Limitations
 
-- **No accounts, no rate limiting.** Do not expose it publicly as-is: anyone could spend your API credits. See the deployment notes.
+- **Accounts are basic.** There is **no password reset and no email verification** (the app sends no email), so a forgotten password means a lost account, and an address isn't proven to be the person's. There is no "delete my account" button yet.
+- **Sign-in and sign-up limits are in memory, per server process.** They slow down password guessing and mass sign-ups, but with several API servers each keeps its own counts. A shared limiter or a web application firewall is the production answer (see the deployment notes). The client address is taken from the connection, so behind a load balancer all users look like one address until the proxy settings are configured.
+- **Sign-ups are open by default**, and each user can start `MAX_GRADINGS_PER_DAY` gradings. Set `ALLOW_REGISTRATION=false` once the people you want have accounts, and set a spend limit in the Anthropic console.
+- **Projects created before accounts existed** have no owner and are hidden from everyone. They remain in the database.
 - **Accuracy has not been measured.** The score is a prediction, not a grade. Run the calibration before trusting it for anything that matters.
 - **Teacher strictness is a nudge and its effect is small and unmeasured.** In a small real-model check (3 runs per setting, two sample essays), Lenient raised a borderline essay from 8/20 to 12/20, but Strict gave the same scores as Standard on both a weak and a strong essay. With only a few coarse rubric levels per criterion there is often no borderline call for it to change. Whether any setting matches a real teacher has not been tested; the calibration tool needs essays graded by that teacher to find out.
 - **Grading is synchronous**, so a request can take minutes; a background worker is the planned next step.

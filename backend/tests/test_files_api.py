@@ -1,19 +1,16 @@
-from collections.abc import AsyncIterator
-
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 
 from app.config import Settings, get_settings
 from app.main import app
 from tests.helpers import make_docx
 
 
-@pytest.fixture
-async def client() -> AsyncIterator[AsyncClient]:
+@pytest.fixture(autouse=True)
+def small_upload_limit(client: AsyncClient):
     app.dependency_overrides[get_settings] = lambda: Settings(max_upload_bytes=100_000)
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-        yield c
-    app.dependency_overrides.clear()
+    yield
+    app.dependency_overrides.pop(get_settings, None)
 
 
 async def test_extract_txt(client: AsyncClient) -> None:
@@ -42,3 +39,8 @@ async def test_empty_file_is_422(client: AsyncClient) -> None:
 async def test_oversized_upload_is_413(client: AsyncClient) -> None:
     response = await client.post("/api/files/extract", files={"file": ("a.txt", b"x" * 100_001)})
     assert response.status_code == 413
+
+
+async def test_uploads_need_an_account(anon_client: AsyncClient) -> None:
+    response = await anon_client.post("/api/files/extract", files={"file": ("a.txt", b"hello")})
+    assert response.status_code == 401

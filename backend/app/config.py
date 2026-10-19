@@ -33,8 +33,18 @@ class Settings(BaseSettings):
     max_draft_chars: Annotated[int, Field(ge=100)] = 50_000
     max_assignment_text_chars: Annotated[int, Field(ge=100)] = 20_000
     max_upload_bytes: Annotated[int, Field(ge=1024)] = 5 * 1024 * 1024
-    cors_origins: str = "http://localhost:5173"
+    # Both spellings of localhost, because browsers treat them as different origins.
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     log_level: str = "INFO"
+
+    # --- Accounts and abuse limits ---
+    session_days: Annotated[int, Field(ge=1, le=365)] = 30
+    # Set true when served over HTTPS so the session cookie is never sent over plain HTTP.
+    cookie_secure: bool = False
+    # Turn off to stop new sign-ups on a deployment (existing users can still sign in).
+    allow_registration: bool = True
+    max_projects_per_user: Annotated[int, Field(ge=1)] = 50
+    max_gradings_per_day: Annotated[int, Field(ge=1)] = 30
 
     @field_validator("anthropic_effort")
     @classmethod

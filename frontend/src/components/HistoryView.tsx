@@ -11,7 +11,7 @@ export default function HistoryView({ history }: { history: History }) {
   const first = graded[0]?.grading;
   const last = graded[graded.length - 1]?.grading;
 
-  // Previous graded version for each version (to diff against).
+  // Previous graded attempt for each attempt (to diff against).
   const previousOf = new Map<number, (typeof graded)[number]>();
   graded.forEach((v, i) => i > 0 && previousOf.set(v.submission_id, graded[i - 1]));
 
@@ -20,22 +20,22 @@ export default function HistoryView({ history }: { history: History }) {
       <section aria-label="Score trend" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold">Score trend</h2>
         {graded.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-600">No version has been graded yet.</p>
+          <p className="mt-2 text-sm text-slate-600">No attempt has been graded yet.</p>
         ) : (
           <>
             {graded.length > 1 && first && last && first.overall.median !== null && last.overall.median !== null ? (
               <p className="mt-1 text-sm text-slate-700" data-testid="trend-summary">
-                {fmt(first.overall.median)} &rarr; {fmt(last.overall.median)} out of {fmt(maxPossible)} across {graded.length} versions
+                {fmt(first.overall.median)} &rarr; {fmt(last.overall.median)} out of {fmt(maxPossible)} across {graded.length} attempts
                 ({fmtDelta(last.overall.median - first.overall.median)}).
               </p>
             ) : (
-              <p className="mt-1 text-sm text-slate-600">Submit another version to see how your score changes.</p>
+              <p className="mt-1 text-sm text-slate-600">Submit another attempt to see how your score changes.</p>
             )}
             <div className="mt-3">
               <ScoreTrend
                 maxPossible={maxPossible}
                 points={graded.map((v) => ({
-                  label: `v${v.version_number}`,
+                  label: `#${v.version_number}`,
                   median: v.grading!.overall.median ?? 0,
                   min: v.grading!.overall.min ?? 0,
                   max: v.grading!.overall.max ?? 0,
@@ -47,8 +47,8 @@ export default function HistoryView({ history }: { history: History }) {
         )}
       </section>
 
-      <section aria-label="Versions" className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">Versions</h2>
+      <section aria-label="Attempts" className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-lg font-semibold">Attempts</h2>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[28rem] text-left text-sm">
             <thead>
@@ -57,9 +57,9 @@ export default function HistoryView({ history }: { history: History }) {
                 {history.versions.map((v) => (
                   <th key={v.submission_id} className="px-2 py-1 align-bottom">
                     {v.grading ? (
-                      <Link className="text-indigo-700 underline" to={`/gradings/${v.grading.grading_id}`}>V{v.version_number}</Link>
+                      <Link className="text-indigo-700 underline" to={`/gradings/${v.grading.grading_id}`}>Attempt {v.version_number}</Link>
                     ) : (
-                      <span>V{v.version_number}</span>
+                      <span>Attempt {v.version_number}</span>
                     )}
                     {v.grading && (
                       <div className="mt-0.5 text-xs font-normal normal-case text-slate-500" data-testid={`strictness-v${v.version_number}`}>
@@ -72,7 +72,7 @@ export default function HistoryView({ history }: { history: History }) {
                           className="text-xs text-indigo-700 underline"
                           to={`/submissions/${v.submission_id}/compare/${previousOf.get(v.submission_id)!.submission_id}`}
                         >
-                          Compare with V{previousOf.get(v.submission_id)!.version_number}
+                          Compare with attempt {previousOf.get(v.submission_id)!.version_number}
                         </Link>
                       </div>
                     )}
@@ -123,8 +123,8 @@ export default function HistoryView({ history }: { history: History }) {
       </section>
 
       <p>
-        <Link className="inline-block rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700" to={`/assignments/${history.assignment_id}/submit`}>
-          Submit a new version
+        <Link className="inline-block rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700" to={`/projects/${history.assignment_id}/submit`}>
+          New attempt
         </Link>
       </p>
     </div>

@@ -1,3 +1,5 @@
+from datetime import UTC, datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -6,11 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings, get_settings
 from app.db import get_session
 from app.deps import get_llm_client
-from app.models import Assignment, Submission
+from app.models import Assignment, Grading, Submission, User
 from app.routers.assignments import get_assignment_or_404
 from app.schemas.comparison import ComparisonRead, HistoryCriterion, HistoryRead
 from app.schemas.grading import GradeRequest, GradingRead, SubmissionCreate, SubmissionRead
 from app.schemas.rubric import Rubric
+from app.security import get_current_user
 from app.services.comparison import build_history, compare_gradings
 from app.services.grader import RubricNotConfirmedError, run_grading
 from app.services.grading_view import (
@@ -23,12 +26,23 @@ from app.services.llm_client import LLMClient
 router = APIRouter(tags=["submissions"])
 
 
-async def get_submission_or_404(
-    submission_id: int, session: AsyncSession = Depends(get_session)
-) -> Submission:
+async def _owned_submission(session: AsyncSession, submission_id: int, user: User) -> Submission | None:
+    """The submission, only if its project belongs to `user`."""
     submission = await session.get(Submission, submission_id)
     if submission is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Submission not found.")
+        return None
+    assignment = await session.get(Assignment, submission.assignment_id)
+    return submission if assignment is not None and assignment.owner_id == user.id else None
+
+
+async def get_submission_or_404(
+    submission_id: int,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> Submission:
+    submission = await _owned_submission(session, submission_id, user)
+    if submission is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Attempt not found.")
     return submission
 
 
@@ -86,6 +100,7 @@ async def read_submission(
 async def grade_submission(
     body: GradeRequest | None = None,
     submission: Submission = Depends(get_submission_or_404),
+    user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
     llm: LLMClient = Depends(get_llm_client),
     settings: Settings = Depends(get_settings),
@@ -94,6 +109,19 @@ async def grade_submission(
     could call later without changes."""
     assignment = await session.get(Assignment, submission.assignment_id)
     assert assignment is not None
+    # Every grading spends model credits, and anyone can sign up, so cap each user's day.
+    since = datetime.now(UTC) - timedelta(hours=24)
+    graded_today = await session.scalar(
+        select(func.count(Grading.id))
+        .join(Submission, Grading.submission_id == Submission.id)
+        .join(Assignment, Submission.assignment_id == Assignment.id)
+        .where(Assignment.owner_id == user.id, Grading.created_at >= since)
+    )
+    if (graded_today or 0) >= settings.max_gradings_per_day:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            f"You have reached today's limit of {settings.max_gradings_per_day} gradings. Please try again tomorrow.",
+        )
     try:
         grading = await run_grading(
             session, llm, assignment, submission, settings,
@@ -138,14 +166,15 @@ async def read_history(
 async def compare_submissions(
     previous_id: int,
     submission: Submission = Depends(get_submission_or_404),
+    user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> ComparisonRead:
     """Compare this version's latest grading with an earlier version's."""
     if previous_id == submission.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Choose two different versions to compare.")
-    previous = await session.get(Submission, previous_id)
+    previous = await _owned_submission(session, previous_id, user)
     if previous is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Previous submission not found.")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Previous attempt not found.")
     if previous.assignment_id != submission.assignment_id:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "These drafts belong to different assignments."

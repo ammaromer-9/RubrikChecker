@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from app.config import Settings, get_settings
+from app.models import User
 from app.schemas.files import ExtractedText
+from app.security import get_current_user
 from app.services.file_extract import FileExtractionError, extract_text
 
 router = APIRouter(prefix="/files", tags=["files"])
@@ -9,7 +11,9 @@ router = APIRouter(prefix="/files", tags=["files"])
 
 @router.post("/extract", response_model=ExtractedText)
 async def extract_file_text(
-    file: UploadFile = File(...), settings: Settings = Depends(get_settings)
+    file: UploadFile = File(...),
+    settings: Settings = Depends(get_settings),
+    _: User = Depends(get_current_user),
 ) -> ExtractedText:
     """Extract text from an uploaded PDF, .docx or .txt file."""
     max_bytes = settings.max_upload_bytes

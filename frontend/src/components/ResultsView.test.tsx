@@ -122,15 +122,15 @@ describe("ResultsView", () => {
     expect(screen.getByText(/1 independent grading run per criterion/)).toBeInTheDocument();
   });
 
-  it("links to revision history, and to a comparison only when there is an earlier graded version", () => {
+  it("links to all attempts, and to a comparison only when there is an earlier graded version", () => {
     renderResults();
-    expect(screen.getByRole("link", { name: "Revision history" })).toHaveAttribute("href", "/assignments/2/history");
+    expect(screen.getByRole("link", { name: "All attempts" })).toHaveAttribute("href", "/projects/2");
     expect(screen.queryByRole("link", { name: /See what changed/ })).not.toBeInTheDocument();
   });
 
-  it("offers 'what changed' for a later version", () => {
+  it("offers 'what changed' for a later attempt", () => {
     renderResults({ version_number: 2 }, { previousSubmissionId: 2, previousVersionNumber: 1 });
-    expect(screen.getByRole("link", { name: "See what changed since version 1" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "See what changed since attempt 1" })).toHaveAttribute(
       "href",
       "/submissions/3/compare/2",
     );

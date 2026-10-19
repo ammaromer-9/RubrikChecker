@@ -39,7 +39,7 @@ export default function SubmitDraftPage() {
         <PageHeader title="Confirm the rubric first" />
         <p className="text-slate-700">
           Grading only uses a rubric you&apos;ve reviewed and confirmed.{" "}
-          <Link className="text-indigo-700 underline" to={`/assignments/${id}/rubric`}>Go to rubric review</Link>
+          <Link className="text-indigo-700 underline" to={`/projects/${id}/rubric`}>Go to rubric review</Link>
         </p>
       </>
     );
@@ -55,7 +55,7 @@ export default function SubmitDraftPage() {
         subtitle={`${assignment.data.title}: paste or upload your draft. We'll predict a score and show you where to improve. We never rewrite your work.`}
       />
       <p className="-mt-3 mb-6 text-sm">
-        <Link className="text-indigo-700 underline" to={`/assignments/${id}/history`}>View earlier versions</Link>
+        <Link className="text-indigo-700 underline" to={`/projects/${id}`}>Back to project</Link>
       </p>
       <form
         className="space-y-6"

@@ -30,7 +30,7 @@ export default function ReviewRubricPage() {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["assignment", id], data);
-      navigate(`/assignments/${id}/submit`);
+      navigate(`/projects/${id}/submit`);
     },
   });
 
@@ -96,7 +96,7 @@ export default function ReviewRubricPage() {
         <pre className="mt-3 whitespace-pre-wrap text-slate-700">{data.rubric_raw_text}</pre>
       </details>
       <p className="mt-4 text-sm">
-        <Link className="text-indigo-700 underline" to="/">Start over with a new assignment</Link>
+        <Link className="text-indigo-700 underline" to="/projects">&larr; All projects</Link>
       </p>
     </>
   );

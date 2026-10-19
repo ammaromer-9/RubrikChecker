@@ -14,6 +14,7 @@ from app.config import Settings
 from app.db import get_session
 from app.main import app
 from app.models import Assignment, Grading, Submission
+from app.services.auth import COOKIE_NAME
 from app.services.maintenance import fail_stale_gradings
 
 
@@ -21,7 +22,8 @@ from app.services.maintenance import fail_stale_gradings
 async def lenient_client():
     """Like a real server: unhandled errors become 500 responses instead of test failures."""
     transport = ASGITransport(app=app, raise_app_exceptions=False)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
+    # A cookie is needed for the request to get as far as the database.
+    async with AsyncClient(transport=transport, base_url="http://test", cookies={COOKIE_NAME: "any-token"}) as c:
         yield c
     app.dependency_overrides.clear()
 
@@ -64,8 +66,9 @@ async def test_oversized_request_bodies_are_rejected_before_being_read(
     assert response.status_code == 413
     assert "too large" in response.json()["detail"]
 
-    ok = await lenient_client.post("/api/files/extract", files={"file": ("a.txt", b"small")})
-    assert ok.status_code == 200
+    # A small body gets past the size check (and is then asked to sign in).
+    small = await lenient_client.post("/api/files/extract", files={"file": ("a.txt", b"small")})
+    assert small.status_code != 413
 
 
 async def test_concurrent_drafts_retry_on_a_version_number_collision(client: AsyncClient, session: AsyncSession, monkeypatch) -> None:

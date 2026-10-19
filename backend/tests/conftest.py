@@ -14,9 +14,11 @@ from app.config import get_settings
 from app.db import get_session
 from app.deps import get_llm_client
 from app.main import app
-from app.models import Base
+from app.models import Base, User
+from app.services.auth import COOKIE_NAME, create_session
 from app.services.llm_client import LLMClient
 from app.services.llm_testing import FakeLLMProvider, InMemoryCallRecorder
+from app.services.ratelimit import limiters
 
 TABLES = ", ".join(t.name for t in Base.metadata.sorted_tables)
 
@@ -72,9 +74,38 @@ def llm_provider() -> FakeLLMProvider:
     return FakeLLMProvider()
 
 
+@pytest.fixture(autouse=True)
+def fresh_rate_limits():
+    """Login and sign-up limits are process-wide; start every test with a clean slate."""
+    limiters.clear()
+    yield
+    limiters.clear()
+
+
+async def make_user(db: AsyncSession, email: str) -> tuple[User, str]:
+    """A user plus a valid session token. The password hash is a placeholder (so these users
+    can't log in with a password), which keeps the many API tests fast."""
+    user = User(email=email, display_name="", password_hash="scrypt$placeholder")
+    db.add(user)
+    await db.commit()
+    return user, await create_session(db, user, days=1)
+
+
+def _api_client(token: str | None = None) -> AsyncClient:
+    cookies = {COOKIE_NAME: token} if token else None
+    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test", cookies=cookies)
+
+
 @pytest.fixture
-async def client(session: AsyncSession, llm_provider: FakeLLMProvider) -> AsyncIterator[AsyncClient]:
-    """API client wired to the test database and the fake LLM."""
+async def user(session: AsyncSession) -> tuple[User, str]:
+    return await make_user(session, "student@example.com")
+
+
+@pytest.fixture
+async def client(
+    session: AsyncSession, llm_provider: FakeLLMProvider, user: tuple[User, str]
+) -> AsyncIterator[AsyncClient]:
+    """API client signed in as `student@example.com`, wired to the test database and fake LLM."""
 
     async def override_session() -> AsyncSession:
         return session
@@ -83,6 +114,21 @@ async def client(session: AsyncSession, llm_provider: FakeLLMProvider) -> AsyncI
     app.dependency_overrides[get_llm_client] = lambda: LLMClient(
         llm_provider, InMemoryCallRecorder(), base_delay=0
     )
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+    async with _api_client(user[1]) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def other_client(session: AsyncSession, client: AsyncClient) -> AsyncIterator[AsyncClient]:
+    """A second, different signed-in user (for testing that data stays private)."""
+    _, token = await make_user(session, "someone.else@example.com")
+    async with _api_client(token) as c:
+        yield c
+
+
+@pytest.fixture
+async def anon_client(client: AsyncClient) -> AsyncIterator[AsyncClient]:
+    """Not signed in."""
+    async with _api_client() as c:
+        yield c

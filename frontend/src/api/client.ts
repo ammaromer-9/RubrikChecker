@@ -1,4 +1,15 @@
-import type { Assignment, Comparison, Grading, History, NewAssignment, Rubric, Strictness, Submission } from "./types";
+import type {
+  Assignment,
+  Comparison,
+  Grading,
+  History,
+  NewAssignment,
+  ProjectSummary,
+  Rubric,
+  Strictness,
+  Submission,
+  User,
+} from "./types";
 
 // In development Vite proxies /api to the backend. In production, set VITE_API_BASE_URL at
 // build time if the API is on a different origin (leave it empty to use the same origin).
@@ -32,14 +43,28 @@ async function readError(response: Response): Promise<string> {
   return `Request failed (${response.status}).`;
 }
 
+/** Fired when a signed-in request comes back 401, so the app can send the user to the sign-in page. */
+export const SESSION_EXPIRED_EVENT = "rubriccheck:session-expired";
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}/api${path}`, init);
+    response = await fetch(`${API_BASE}/api${path}`, {
+      ...init,
+      // The session cookie. Same-origin requests send it by default; a separate API origin needs "include".
+      credentials: API_BASE ? "include" : "same-origin",
+    });
   } catch {
     throw new ApiError(0, "Could not reach the server. Is the backend running?");
   }
-  if (!response.ok) throw new ApiError(response.status, await readError(response));
+  if (!response.ok) {
+    // Signing in or checking who you are legitimately returns 401; anything else means the session ended.
+    if (response.status === 401 && !path.startsWith("/auth/")) {
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
+    throw new ApiError(response.status, await readError(response));
+  }
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
@@ -52,6 +77,16 @@ function json(method: string, body?: unknown): RequestInit {
 }
 
 export const api = {
+  register: (body: { email: string; password: string; display_name?: string }) =>
+    request<User>("/auth/register", json("POST", body)),
+  login: (body: { email: string; password: string }) => request<User>("/auth/login", json("POST", body)),
+  logout: () => request<void>("/auth/logout", json("POST")),
+  me: () => request<User>("/auth/me"),
+
+  listProjects: () => request<ProjectSummary[]>("/assignments"),
+  renameProject: (id: number, title: string) => request<Assignment>(`/assignments/${id}`, json("PATCH", { title })),
+  deleteProject: (id: number) => request<void>(`/assignments/${id}`, { method: "DELETE" }),
+
   health: () => request<{ status: string; database: string }>("/health"),
 
   extractFile: (file: File) => {

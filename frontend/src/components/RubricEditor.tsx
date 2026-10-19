@@ -162,7 +162,7 @@ export default function RubricEditor({ initial, confirmed, saving, serverError, 
 
       <Button variant="secondary" onClick={addCriterion}>Add criterion</Button>
 
-      <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-lg sm:border">
+      <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white px-4 py-3 sm:mx-0 sm:rounded-lg sm:border">
         {problems.length > 0 && (
           <ul className="mb-3 list-disc space-y-0.5 pl-5 text-sm text-red-700" aria-label="Rubric problems">
             {problems.map((p) => <li key={p}>{p}</li>)}

@@ -14,15 +14,15 @@ const renderHistory = (h = history) =>
   );
 
 describe("HistoryView", () => {
-  it("summarises the trend across graded versions", () => {
+  it("summarises the trend across graded attempts", () => {
     renderHistory();
-    expect(screen.getByTestId("trend-summary")).toHaveTextContent("8 → 13 out of 16 across 2 versions (+5)");
+    expect(screen.getByTestId("trend-summary")).toHaveTextContent("8 → 13 out of 16 across 2 attempts (+5)");
   });
 
-  it("draws one trend point per graded version and describes the chart for screen readers", () => {
+  it("draws one trend point per graded attempt and describes the chart for screen readers", () => {
     renderHistory();
     expect(screen.getAllByTestId("trend-point")).toHaveLength(2);
-    expect(screen.getByRole("img")).toHaveAccessibleName(/v1: 8 of 16, v2: 13 of 16/);
+    expect(screen.getByRole("img")).toHaveAccessibleName(/#1: 8 of 16, #2: 13 of 16/);
   });
 
   it("shows each version's scores with the change since the previous graded version", () => {
@@ -48,12 +48,12 @@ describe("HistoryView", () => {
     expect(screen.getAllByRole("link", { name: /Compare with/ })).toHaveLength(1);
   });
 
-  it("links versions to their results and consecutive graded versions to a comparison", () => {
+  it("links attempts to their results and consecutive graded versions to a comparison", () => {
     renderHistory();
-    expect(screen.getByRole("link", { name: "V1" })).toHaveAttribute("href", "/gradings/7");
-    expect(screen.getByRole("link", { name: "V2" })).toHaveAttribute("href", "/gradings/8");
-    expect(screen.getByRole("link", { name: "Compare with V1" })).toHaveAttribute("href", "/submissions/4/compare/3");
-    expect(screen.getByRole("link", { name: "Submit a new version" })).toHaveAttribute("href", "/assignments/2/submit");
+    expect(screen.getByRole("link", { name: "Attempt 1" })).toHaveAttribute("href", "/gradings/7");
+    expect(screen.getByRole("link", { name: "Attempt 2" })).toHaveAttribute("href", "/gradings/8");
+    expect(screen.getByRole("link", { name: "Compare with attempt 1" })).toHaveAttribute("href", "/submissions/4/compare/3");
+    expect(screen.getByRole("link", { name: "New attempt" })).toHaveAttribute("href", "/projects/2/submit");
   });
 
   it("labels the teacher strictness each version was graded with", () => {
@@ -63,16 +63,16 @@ describe("HistoryView", () => {
     expect(screen.queryByTestId("strictness-v3")).not.toBeInTheDocument(); // never graded
   });
 
-  it("invites a second version when only one has been graded", () => {
+  it("invites a second attempt when only one has been graded", () => {
     renderHistory({ ...history, versions: [history.versions[0]] });
-    expect(screen.getByText(/Submit another version/)).toBeInTheDocument();
+    expect(screen.getByText(/Submit another attempt/)).toBeInTheDocument();
     expect(screen.queryByTestId("trend-summary")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Compare with/ })).not.toBeInTheDocument();
   });
 
   it("handles an assignment with nothing graded", () => {
     renderHistory({ ...history, versions: [{ ...history.versions[2] }] });
-    expect(screen.getByText("No version has been graded yet.")).toBeInTheDocument();
+    expect(screen.getByText("No attempt has been graded yet.")).toBeInTheDocument();
   });
 });
 

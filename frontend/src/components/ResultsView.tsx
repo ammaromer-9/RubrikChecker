@@ -37,7 +37,7 @@ function InstructionChecklist({ checks }: { checks: CheckResult[] }) {
 
 interface Props {
   grading: Grading;
-  /** Submission id of the version before this one, when it has a graded earlier version. */
+  /** Submission id of the attempt before this one, when it has a graded earlier attempt. */
   previousSubmissionId?: number;
   previousVersionNumber?: number;
   /** When given, a "grade again with a different teacher strictness" panel is shown. */
@@ -83,7 +83,7 @@ export default function ResultsView({
   return (
     <div className="space-y-6">
       <section aria-label="Overall score" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <p className="text-sm uppercase tracking-wide text-slate-500">Predicted score &middot; version {grading.version_number}</p>
+        <p className="text-sm uppercase tracking-wide text-slate-500">Predicted score &middot; attempt {grading.version_number}</p>
         <p className="mt-1 text-3xl font-bold" data-testid="overall">{formatOverall(grading.overall)}</p>
         <p className="mt-2 text-sm text-slate-600">
           A prediction from {grading.num_runs} independent grading run{grading.num_runs === 1 ? "" : "s"} per criterion, not your real grade.
@@ -95,14 +95,14 @@ export default function ResultsView({
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
           {previousSubmissionId !== undefined && (
             <Link className="font-medium text-indigo-700 underline" to={`/submissions/${grading.submission_id}/compare/${previousSubmissionId}`}>
-              See what changed since version {previousVersionNumber}
+              See what changed since attempt {previousVersionNumber}
             </Link>
           )}
-          <Link className="text-indigo-700 underline" to={`/assignments/${grading.assignment_id}/submit`}>
-            Submit a new version
+          <Link className="text-indigo-700 underline" to={`/projects/${grading.assignment_id}/submit`}>
+            Start a new attempt
           </Link>
-          <Link className="text-indigo-700 underline" to={`/assignments/${grading.assignment_id}/history`}>
-            Revision history
+          <Link className="text-indigo-700 underline" to={`/projects/${grading.assignment_id}`}>
+            All attempts
           </Link>
         </div>
       </section>

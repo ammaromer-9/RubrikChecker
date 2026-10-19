@@ -7,16 +7,37 @@ any number in this document.
 
 ## Read this before exposing it publicly
 
-RubricCheck has **no user accounts and no rate limiting**. Anyone who can reach the API can start gradings, and every
-grading spends your Anthropic credits (a grading is roughly `criteria x runs` model calls, plus feedback). Before
-the URL is public, do at least one of:
+RubricCheck has accounts (email and password, a session cookie) and every project is private to its owner. Accounts
+are **open sign-up**, though, and every grading spends your Anthropic credits (roughly `criteria x runs` model calls,
+plus feedback). Before the URL is public:
 
-- put the site behind authentication (for example Amazon Cognito with the load balancer, or CloudFront signed cookies);
-- add AWS WAF rate-based rules on the load balancer or CloudFront;
-- restrict access to a VPN or an IP allow-list;
-- set a monthly spend limit and alerts in the Anthropic console.
+- **Decide who may sign up.** Set `ALLOW_REGISTRATION=false` once the people you want have accounts, or keep it open
+  and rely on the per-user limits (`MAX_GRADINGS_PER_DAY`, `MAX_PROJECTS_PER_USER`). A determined person can still
+  create many accounts, so also:
+- **Set a monthly spend limit and alerts** in the Anthropic console.
+- **Put AWS WAF rate-based rules** on the load balancer. The app's sign-in and sign-up limits are in memory per process
+  (each API task keeps its own counts), so they slow guessing down but are not a shared, firm limit.
+- **Serve everything over HTTPS and set `COOKIE_SECURE=true`**, so the session cookie is never sent over plain HTTP.
+- **Know what is missing.** There is no password reset or email verification (the app sends no email) and no "delete my
+  account" button. If you need those, use a managed identity service (for example Amazon Cognito) or add email
+  sending (Amazon SES).
+- **Client addresses behind a load balancer.** The sign-in limiter keys on the connection's address, which behind an
+  ALB is the load balancer. Configure uvicorn's proxy-header handling for your network (`--proxy-headers` with
+  `--forwarded-allow-ips` set to the ALB's address range) before relying on per-address limits.
 
-When you add accounts, `assignments` is the place to add an `owner_id`; every other table hangs off an assignment.
+### Cookies need the app and the API on the same site
+
+The session is a cookie with `SameSite=Lax`. Browsers only send it on requests the page makes to the **same site**, so
+the frontend and the API must share a registrable domain: for example `app.example.com` and `api.example.com`
+work; `example.com` and `some-other-domain.net` do not. Then:
+
+- build the frontend with `VITE_API_BASE_URL=https://api.example.com` (requests are sent with credentials);
+- set `CORS_ORIGINS=https://app.example.com` on the API: exactly the frontend's origin, never a wildcard (the API
+  allows credentials, and also refuses state-changing requests from any other origin);
+- set `COOKIE_SECURE=true`.
+
+The simplest alternative is to serve the frontend and `/api` from one hostname, but see the timeout note below for why
+that is awkward with CloudFront in front.
 
 ## Target architecture
 
@@ -91,7 +112,7 @@ docker push <account>.dkr.ecr.<region>.amazonaws.com/rubriccheck-api:latest
 - Container port `8000`; set `runtimePlatform` to match the image architecture.
 - Start with 0.5 vCPU / 1 GB. The service waits on network calls rather than computing, so memory and concurrency
   matter more than CPU.
-- Plain environment variables: `ANTHROPIC_MODEL`, `ANTHROPIC_EFFORT`, `GRADING_RUNS`, `GRADING_CONCURRENCY`,
+- Plain environment variables: `ANTHROPIC_MODEL`, `ANTHROPIC_EFFORT`, `GRADING_RUNS`, `GRADING_CONCURRENCY`, `COOKIE_SECURE=true`, `ALLOW_REGISTRATION`,
   `CORS_ORIGINS`, `LOG_LEVEL`, and the limits (see the table in the README).
 - Secrets (from Secrets Manager): `ANTHROPIC_API_KEY`, `DATABASE_URL`.
 - Health check: `GET /api/health` returns 200 even when the database is down (it reports `"database": "unavailable"`),
@@ -143,7 +164,8 @@ that map 403 and 404 to `/index.html` with status 200. Invalidate the distributi
 
 ## Checklist
 
-- [ ] Authentication, rate limiting, or network restriction in place
+- [ ] `COOKIE_SECURE=true`, HTTPS everywhere, and the frontend and API on the same registrable domain
+- [ ] `ALLOW_REGISTRATION` decided, per-user limits set, and WAF rate limiting in place
 - [ ] Anthropic spend limit and alert set
 - [ ] RDS in private subnets, automated backups on, storage encrypted
 - [ ] Secrets in Secrets Manager, not in the task definition or the image

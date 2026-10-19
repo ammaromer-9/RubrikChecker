@@ -28,8 +28,8 @@ afterEach(() => vi.restoreAllMocks());
 describe("choosing the teacher strictness on the rubric review page", () => {
   const routes = (
     <>
-      <Route path="/assignments/:id/rubric" element={<ReviewRubricPage />} />
-      <Route path="/assignments/:id/submit" element={<p>submit page</p>} />
+      <Route path="/projects/:id/rubric" element={<ReviewRubricPage />} />
+      <Route path="/projects/:id/submit" element={<p>submit page</p>} />
     </>
   );
 
@@ -49,13 +49,13 @@ describe("choosing the teacher strictness on the rubric review page", () => {
 
   it("starts from the saved setting", async () => {
     mockApi("lenient");
-    renderAt("/assignments/2/rubric", routes);
+    renderAt("/projects/2/rubric", routes);
     expect(await screen.findByRole("radio", { name: /Lenient/ })).toBeChecked();
   });
 
   it("saves the new setting, then the rubric, then moves on", async () => {
     const calls = mockApi();
-    renderAt("/assignments/2/rubric", routes);
+    renderAt("/projects/2/rubric", routes);
     await userEvent.click(await screen.findByRole("radio", { name: /Strict/ }));
     await userEvent.click(screen.getByRole("button", { name: "Confirm rubric" }));
 
@@ -66,7 +66,7 @@ describe("choosing the teacher strictness on the rubric review page", () => {
 
   it("does not touch the setting when it was not changed", async () => {
     mockApi();
-    renderAt("/assignments/2/rubric", routes);
+    renderAt("/projects/2/rubric", routes);
     await userEvent.click(await screen.findByRole("button", { name: "Confirm rubric" }));
     await screen.findByText("submit page");
     expect(api.setStrictness).not.toHaveBeenCalled();
@@ -76,7 +76,7 @@ describe("choosing the teacher strictness on the rubric review page", () => {
   it("shows the error and does not confirm if saving the setting fails", async () => {
     mockApi();
     vi.spyOn(api, "setStrictness").mockRejectedValue(new Error("Could not reach the server."));
-    renderAt("/assignments/2/rubric", routes);
+    renderAt("/projects/2/rubric", routes);
     await userEvent.click(await screen.findByRole("radio", { name: /Lenient/ }));
     await userEvent.click(screen.getByRole("button", { name: "Confirm rubric" }));
     expect(await screen.findByText("Could not reach the server.")).toBeInTheDocument();

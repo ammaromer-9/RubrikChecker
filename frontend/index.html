@@ -3,7 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>RubricCheck</title>
+    <script>
+      // Apply the saved (or system) theme before the page paints, so there is no light flash in dark mode.
+      // Keep this logic in sync with src/lib/theme.ts.
+      (function () {
+        try {
+          var saved = localStorage.getItem("rubriccheck-theme");
+          var dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          if (dark) document.documentElement.classList.add("dark");
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
