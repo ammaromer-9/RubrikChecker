@@ -92,4 +92,20 @@ describe("ComparisonView", () => {
     expect(screen.getByRole("link", { name: /Full results for version 2/ })).toHaveAttribute("href", "/gradings/8");
     expect(screen.getByRole("link", { name: "Revision history" })).toHaveAttribute("href", "/assignments/2/history");
   });
+
+  it("warns when the two versions were graded for different teachers", () => {
+    renderComparison({
+      strictness_differs: true,
+      previous: { ...comparison.previous, strictness: "standard" },
+      current: { ...comparison.current, strictness: "strict" },
+    });
+    const warning = screen.getByTestId("strictness-warning");
+    expect(warning).toHaveTextContent("version 1: standard, version 2: strict");
+    expect(warning).toHaveTextContent(/part of this change may come from that setting/);
+  });
+
+  it("stays quiet when both used the same setting", () => {
+    renderComparison();
+    expect(screen.queryByTestId("strictness-warning")).not.toBeInTheDocument();
+  });
 });

@@ -26,6 +26,8 @@ class Assignment(Base):
     rubric_confirmed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     # Checkable requirements extracted from the instructions (word count, headings, ...).
     requirements_parsed: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # How tough the teacher is: lenient | standard | strict. Nudges borderline grading calls.
+    teacher_strictness: Mapped[str] = mapped_column(Text, default="standard", server_default="standard")
     created_at: Mapped[datetime] = created_at_column()
 
     submissions: Mapped[list[Submission]] = relationship(

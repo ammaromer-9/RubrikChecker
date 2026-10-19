@@ -56,6 +56,13 @@ describe("HistoryView", () => {
     expect(screen.getByRole("link", { name: "Submit a new version" })).toHaveAttribute("href", "/assignments/2/submit");
   });
 
+  it("labels the teacher strictness each version was graded with", () => {
+    renderHistory();
+    expect(screen.getByTestId("strictness-v1")).toHaveTextContent("Standard teacher");
+    expect(screen.getByTestId("strictness-v2")).toHaveTextContent("Strict teacher");
+    expect(screen.queryByTestId("strictness-v3")).not.toBeInTheDocument(); // never graded
+  });
+
   it("invites a second version when only one has been graded", () => {
     renderHistory({ ...history, versions: [history.versions[0]] });
     expect(screen.getByText(/Submit another version/)).toBeInTheDocument();

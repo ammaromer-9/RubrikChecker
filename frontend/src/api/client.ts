@@ -1,4 +1,4 @@
-import type { Assignment, Comparison, Grading, History, NewAssignment, Rubric, Submission } from "./types";
+import type { Assignment, Comparison, Grading, History, NewAssignment, Rubric, Strictness, Submission } from "./types";
 
 // In development Vite proxies /api to the backend. In production, set VITE_API_BASE_URL at
 // build time if the API is on a different origin (leave it empty to use the same origin).
@@ -71,8 +71,14 @@ export const api = {
 
   createSubmission: (assignmentId: number, draftText: string) =>
     request<Submission>(`/assignments/${assignmentId}/submissions`, json("POST", { draft_text: draftText })),
-  gradeSubmission: (submissionId: number) =>
-    request<Grading>(`/submissions/${submissionId}/grade`, json("POST")),
+  setStrictness: (id: number, teacherStrictness: Strictness) =>
+    request<Assignment>(`/assignments/${id}/strictness`, json("PUT", { teacher_strictness: teacherStrictness })),
+  /** Grades the draft. `strictness` overrides the assignment's setting for this grading only. */
+  gradeSubmission: (submissionId: number, strictness?: Strictness) =>
+    request<Grading>(
+      `/submissions/${submissionId}/grade`,
+      json("POST", strictness ? { teacher_strictness: strictness } : undefined),
+    ),
   getGrading: (id: number) => request<Grading>(`/gradings/${id}`),
 
   getHistory: (assignmentId: number) => request<History>(`/assignments/${assignmentId}/history`),

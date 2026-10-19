@@ -1,5 +1,7 @@
 // Mirrors the backend Pydantic schemas (backend/app/schemas).
 
+export type Strictness = "lenient" | "standard" | "strict";
+
 export interface Level {
   label: string;
   points: number;
@@ -32,6 +34,7 @@ export interface Assignment {
   rubric_parsed: Rubric | null;
   rubric_confirmed: boolean;
   requirements_parsed: { requirements: Requirement[] } | null;
+  teacher_strictness: Strictness;
   created_at: string;
 }
 
@@ -108,6 +111,7 @@ export interface Grading {
   model: string;
   num_runs: number;
   prompt_version: string;
+  strictness: Strictness;
   created_at: string;
   overall: { median: number | null; min: number | null; max: number | null; max_possible: number };
   draft_text: string;
@@ -122,6 +126,7 @@ export interface VersionRef {
   submission_id: number;
   version_number: number;
   grading_id: number;
+  strictness: Strictness;
 }
 
 export type ChangeStatus = "improved" | "declined" | "unchanged" | "new" | "removed";
@@ -169,6 +174,8 @@ export interface Comparison {
   resolved_issues: { criterion_id: string; name: string; issue: string; points_gained: number }[];
   requirement_changes: RequirementChange[];
   remaining_fixes: TopFix[];
+  /** The two versions were graded with different teacher strictness. */
+  strictness_differs: boolean;
   improved_count: number;
   declined_count: number;
   unchanged_count: number;
@@ -183,6 +190,7 @@ export interface HistoryVersion {
     overall: Grading["overall"];
     criterion_points: Record<string, number>;
     uncertain: string[];
+    strictness: Strictness;
   } | null;
 }
 

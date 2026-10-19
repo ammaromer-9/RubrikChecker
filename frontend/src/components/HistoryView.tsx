@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 
 import type { History } from "../api/types";
 import { fmt, fmtDelta, formatOverall } from "../lib/format";
+import { strictnessLabel } from "../lib/strictness";
 import ScoreTrend from "./ScoreTrend";
 
 export default function HistoryView({ history }: { history: History }) {
@@ -59,6 +60,11 @@ export default function HistoryView({ history }: { history: History }) {
                       <Link className="text-indigo-700 underline" to={`/gradings/${v.grading.grading_id}`}>V{v.version_number}</Link>
                     ) : (
                       <span>V{v.version_number}</span>
+                    )}
+                    {v.grading && (
+                      <div className="mt-0.5 text-xs font-normal normal-case text-slate-500" data-testid={`strictness-v${v.version_number}`}>
+                        {strictnessLabel(v.grading.strictness)} teacher
+                      </div>
                     )}
                     {previousOf.has(v.submission_id) && (
                       <div className="mt-0.5 normal-case">

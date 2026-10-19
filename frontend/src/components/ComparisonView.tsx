@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 
 import type { ChangeStatus, Comparison, RequirementStatus } from "../api/types";
 import { fmt, fmtDelta } from "../lib/format";
+import { strictnessLabel } from "../lib/strictness";
 import { Badge } from "./ui";
 
 const ARROWS: Record<ChangeStatus, { symbol: string; label: string; tone: string }> = {
@@ -47,6 +48,14 @@ export default function ComparisonView({ comparison }: { comparison: Comparison 
             {overall.ranges_overlap
               ? "The score ranges of the two versions overlap, so part of this change may just be normal variation between grading runs. Treat it as a hint, not proof."
               : `The score ranges don't overlap, so this ${direction === "up" ? "improvement" : "drop"} is likely real.`}
+          </p>
+        )}
+        {comparison.strictness_differs && (
+          <p role="note" data-testid="strictness-warning" className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            These versions were graded for different teachers (version {previous.version_number}:{" "}
+            {strictnessLabel(previous.strictness).toLowerCase()}, version {current.version_number}:{" "}
+            {strictnessLabel(current.strictness).toLowerCase()}), so part of this change may come from that setting rather
+            than from your edits. Grade one version again with the same setting for a fair comparison.
           </p>
         )}
         <p className="mt-2 flex flex-wrap gap-3 text-sm">

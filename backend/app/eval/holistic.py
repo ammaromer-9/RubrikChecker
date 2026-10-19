@@ -16,6 +16,7 @@ from app.schemas.rubric import Criterion, Rubric
 from app.services.feedback import levels_text
 from app.services.grader import SYSTEM_PROMPT
 from app.services.llm_client import LLMClient, LLMError
+from app.services.strictness import guidance_for
 
 
 def holistic_schema_for(rubric: Rubric, enforce_evidence: bool) -> type[BaseModel]:
@@ -75,7 +76,13 @@ _EVIDENCE_RULES = (
 
 
 async def grade_holistic_once(
-    llm: LLMClient, rubric: Rubric, *, instructions: str, draft: str, enforce_evidence: bool
+    llm: LLMClient,
+    rubric: Rubric,
+    *,
+    instructions: str,
+    draft: str,
+    enforce_evidence: bool,
+    strictness: str = "standard",
 ) -> dict[str, tuple[float, list[EvidenceQuote]]]:
     """Returns {criterion id: (points, evidence)} from a single LLM call."""
     prompt = load_prompt("grade_holistic")
@@ -86,6 +93,7 @@ async def grade_holistic_once(
         prompt=prompt.render(
             instructions=instructions,
             rubric_text=_rubric_text(rubric),
+            strictness_guidance=guidance_for(strictness),
             json_shape=_json_shape(rubric, enforce_evidence),
             draft=draft,
             evidence_rules=_EVIDENCE_RULES if enforce_evidence else "",
@@ -114,6 +122,7 @@ async def grade_holistic_runs(
     num_runs: int,
     concurrency: int,
     enforce_evidence: bool,
+    strictness: str = "standard",
 ) -> list[dict[str, tuple[float, list[EvidenceQuote]]]]:
     """`num_runs` independent holistic gradings. Failed runs are dropped; if all fail,
     the first error is raised."""
@@ -122,7 +131,8 @@ async def grade_holistic_runs(
     async def one() -> dict[str, tuple[float, list[EvidenceQuote]]]:
         async with semaphore:
             return await grade_holistic_once(
-                llm, rubric, instructions=instructions, draft=draft, enforce_evidence=enforce_evidence
+                llm, rubric, instructions=instructions, draft=draft,
+                enforce_evidence=enforce_evidence, strictness=strictness,
             )
 
     outcomes = await asyncio.gather(*(one() for _ in range(num_runs)), return_exceptions=True)

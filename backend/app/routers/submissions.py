@@ -98,6 +98,7 @@ async def grade_submission(
         grading = await run_grading(
             session, llm, assignment, submission, settings,
             num_runs=body.num_runs if body else None,
+            strictness=body.teacher_strictness if body else None,
         )
     except RubricNotConfirmedError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc

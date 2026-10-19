@@ -21,7 +21,7 @@ A pre-submission grading assistant for students. Paste the assignment instructio
 ## How it works
 
 1. **New assignment:** paste or upload (PDF, .docx, .txt) the instructions and the rubric.
-2. **Review the rubric:** the rubric is converted to structured criteria and levels by the LLM, then shown in an editable table. Levels the model had to invent are flagged *inferred*. **Grading only ever uses the version you confirm.**
+2. **Review the rubric:** the rubric is converted to structured criteria and levels by the LLM, then shown in an editable table. Levels the model had to invent are flagged *inferred*. You also say **how tough your teacher is** (lenient, standard or strict). **Grading only ever uses the version you confirm.**
 3. **Submit a draft** and get results: score and range, instruction checklist, top 3 fixes, per-criterion cards, and the draft with evidence highlighted (green = meets, red = falls short; click either way to jump between draft and card).
 4. **Submit a new version** and compare: per-criterion changes, issues you fixed, and a score trend.
 
@@ -213,7 +213,8 @@ Interactive docs are served at `/docs`. All routes are under `/api`.
 | `POST /assignments/{id}/extract-requirements` | Extract checkable requirements from the instructions |
 | `POST /assignments/{id}/submissions` | Add a draft as the next version |
 | `GET /submissions/{id}` | Read a draft |
-| `POST /submissions/{id}/grade` | Grade it (synchronous), optional `{"num_runs": 1-7}` |
+| `PUT /assignments/{id}/strictness` | Set how tough the teacher is: `lenient`, `standard` (default) or `strict` |
+| `POST /submissions/{id}/grade` | Grade it (synchronous). Optional body: `{"num_runs": 1-7, "teacher_strictness": "strict"}`; the strictness overrides the assignment's setting for this grading only |
 | `GET /gradings/{id}` | Full results |
 | `GET /assignments/{id}/history` | All versions with scores, for trends |
 | `GET /submissions/{id}/compare/{previous_id}` | What changed between two versions |
@@ -228,6 +229,7 @@ Errors are JSON `{"detail": "..."}` with meaningful statuses: 404 unknown id, 40
 - **Points come from the confirmed rubric**, never from a number the model wrote: the model picks a level label (validated against the rubric) and the level's points are looked up.
 - **Evidence is verified.** Each quote must be a verbatim substring of the draft (whitespace and curly-versus-straight quotes are ignored). Verified quotes are stored with character offsets for highlighting. Unverified ones are kept but flagged and never highlighted.
 - **Instruction checks are plain Python.** The LLM is used once to turn the instructions into a list of checkable requirements (word count range, required headings, minimum citations, citation style). The checks themselves are deterministic code with no model involved.
+- **Teacher strictness:** an optional setting (lenient / standard / strict, saved per assignment, overridable per grading) adds a short instruction to the grading prompt about which way to lean when a draft sits between two levels. It is a nudge, not a dial: the model still picks one of the confirmed rubric levels, the points still come from that level, and "standard" adds nothing at all (identical to the plain grader). Each grading records the setting it used, the results page shows it, and a version comparison warns when the two versions used different settings. See the limitations below for how well it works.
 - **Sampling:** current Claude models fix their sampling parameters, so `temperature` cannot be set. Runs differ through the model's default sampling, which is what makes the spread across runs meaningful.
 
 ## Design decisions
@@ -244,6 +246,7 @@ Errors are JSON `{"detail": "..."}` with meaningful statuses: 404 unknown id, 40
 | Prompts are versioned files | The prompt version is stored on every grading and model call, so results trace back to the exact wording. |
 | Log every model call | `llm_calls` records tokens, latency and failures, so cost and reliability are queryable. |
 | Mock the model in tests | Tests never call the real API; a fake provider plays the grader, feedback writer and parser. |
+| Teacher strictness only nudges borderline calls | The rubric stays the standard, so scores remain checkable. The setting is stored with every grading and flagged in comparisons so it can't be mistaken for improvement. |
 | Compare changes against grader noise | A version comparison says when a score change is inside the two versions' ranges and may not be real. |
 
 ## Academic-integrity design
@@ -305,6 +308,7 @@ The API ships as a container (`backend/Dockerfile`: non-root user, health check,
 
 - **No accounts, no rate limiting.** Do not expose it publicly as-is: anyone could spend your API credits. See the deployment notes.
 - **Accuracy has not been measured.** The score is a prediction, not a grade. Run the calibration before trusting it for anything that matters.
+- **Teacher strictness is a nudge and its effect is small and unmeasured.** In a small real-model check (3 runs per setting, two sample essays), Lenient raised a borderline essay from 8/20 to 12/20, but Strict gave the same scores as Standard on both a weak and a strong essay. With only a few coarse rubric levels per criterion there is often no borderline call for it to change. Whether any setting matches a real teacher has not been tested; the calibration tool needs essays graded by that teacher to find out.
 - **Grading is synchronous**, so a request can take minutes; a background worker is the planned next step.
 - **Citation checks** count in-text patterns only (APA, Harvard, MLA, IEEE) and do not parse the reference list. Other styles are not checked.
 - **A rubric edited after grading** changes the criterion names and maximums shown for old results (scores are kept).

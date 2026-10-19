@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
-import type { CheckResult, Grading } from "../api/types";
+import type { CheckResult, Grading, Strictness } from "../api/types";
 import { fmt, formatOverall } from "../lib/format";
 import { quoteKey, type QuoteRef } from "../lib/highlight";
+import { strictnessLabel } from "../lib/strictness";
 import CriterionCard from "./CriterionCard";
 import HighlightedDraft from "./HighlightedDraft";
-import { Badge } from "./ui";
+import StrictnessPicker from "./StrictnessPicker";
+import { Badge, Button, ErrorBanner, LoadingPanel } from "./ui";
 
 function InstructionChecklist({ checks }: { checks: CheckResult[] }) {
   if (checks.length === 0) return null;
@@ -38,11 +40,23 @@ interface Props {
   /** Submission id of the version before this one, when it has a graded earlier version. */
   previousSubmissionId?: number;
   previousVersionNumber?: number;
+  /** When given, a "grade again with a different teacher strictness" panel is shown. */
+  onRegrade?: (strictness: Strictness) => void;
+  regrading?: boolean;
+  regradeError?: string | null;
 }
 
-export default function ResultsView({ grading, previousSubmissionId, previousVersionNumber }: Props) {
+export default function ResultsView({
+  grading,
+  previousSubmissionId,
+  previousVersionNumber,
+  onRegrade,
+  regrading = false,
+  regradeError = null,
+}: Props) {
   const draftRef = useRef<HTMLDivElement>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [regradeChoice, setRegradeChoice] = useState<Strictness>(grading.strictness);
 
   useEffect(() => {
     if (!flash) return;
@@ -74,6 +88,9 @@ export default function ResultsView({ grading, previousSubmissionId, previousVer
         <p className="mt-2 text-sm text-slate-600">
           A prediction from {grading.num_runs} independent grading run{grading.num_runs === 1 ? "" : "s"} per criterion, not your real grade.
           {uncertainCount > 0 && ` ${uncertainCount} criteri${uncertainCount === 1 ? "on is" : "a are"} marked uncertain.`}
+        </p>
+        <p className="mt-1 text-sm text-slate-600" data-testid="strictness-note">
+          Graded as for a <strong>{strictnessLabel(grading.strictness).toLowerCase()}</strong> teacher.
         </p>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
           {previousSubmissionId !== undefined && (
@@ -111,6 +128,19 @@ export default function ResultsView({ grading, previousSubmissionId, previousVer
       )}
 
       <InstructionChecklist checks={grading.instruction_checks} />
+
+      {onRegrade && (
+        <section aria-label="Grade again" className="space-y-3">
+          <StrictnessPicker name="regrade-strictness" value={regradeChoice} onChange={setRegradeChoice} disabled={regrading} />
+          {regrading && (
+            <LoadingPanel title="Grading again…">This takes about as long as the first time. Keep this tab open.</LoadingPanel>
+          )}
+          <ErrorBanner message={regradeError} />
+          <Button disabled={regrading} onClick={() => onRegrade(regradeChoice)}>
+            Grade this draft again as a {strictnessLabel(regradeChoice).toLowerCase()} teacher
+          </Button>
+        </section>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4">

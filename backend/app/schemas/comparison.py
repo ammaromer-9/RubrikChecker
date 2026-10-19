@@ -17,6 +17,7 @@ class VersionRef(BaseModel):
     submission_id: int
     version_number: int
     grading_id: int
+    strictness: str = "standard"
 
 
 class OverallChange(BaseModel):
@@ -73,6 +74,9 @@ class ComparisonRead(BaseModel):
     requirement_changes: list[RequirementChange]
     # What is still costing the most points in the current version.
     remaining_fixes: list[TopFix]
+    # True when the two versions were graded with different teacher strictness, so part of
+    # any score change may come from the setting rather than from the edits.
+    strictness_differs: bool = False
     improved_count: int
     declined_count: int
     unchanged_count: int
@@ -89,6 +93,7 @@ class HistoryGrading(BaseModel):
     overall: OverallScore
     criterion_points: dict[str, float]
     uncertain: list[str]
+    strictness: str = "standard"
 
 
 class HistoryVersion(BaseModel):

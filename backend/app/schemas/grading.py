@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.requirements import CheckResult
+from app.schemas.strictness import Strictness
 
 Confidence = Literal["low", "medium", "high"]
 Supports = Literal["met", "not_met"]
@@ -104,6 +105,7 @@ class GradingRead(BaseModel):
     model: str
     num_runs: int
     prompt_version: str
+    strictness: Strictness = "standard"
     created_at: datetime
     overall: OverallScore
     draft_text: str
@@ -115,6 +117,8 @@ class GradingRead(BaseModel):
 class GradeRequest(BaseModel):
     # Overrides the configured number of grading runs for this request.
     num_runs: int | None = Field(default=None, ge=1, le=7)
+    # Overrides the assignment's teacher strictness for this grading only.
+    teacher_strictness: Strictness | None = None
 
 
 class SubmissionCreate(BaseModel):

@@ -37,6 +37,7 @@ from app.services.instruction_checks import evaluate_requirements
 from app.services.llm_client import LLMClient, LLMError
 from app.services.requirements_extractor import extract_requirements
 from app.services.scoring import aggregate_criterion, aggregate_overall
+from app.services.strictness import guidance_for
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,7 @@ async def grade_criterion_once(
     grading_id: int | None,
     prompt_name: str = "grade_criterion",
     enforce_evidence: bool = False,
+    strictness: str = "standard",
 ) -> CriterionRun:
     prompt = load_prompt(prompt_name)
     grade = await llm.generate_structured(
@@ -100,6 +102,7 @@ async def grade_criterion_once(
             criterion_name=criterion.name,
             max_points=f"{criterion.max_points:g}",
             levels_text=levels_text(criterion),
+            strictness_guidance=guidance_for(strictness),
             draft=draft,
         ),
         prompt_version=prompt.version,
@@ -121,6 +124,7 @@ async def grade_all_criteria(
     grading_id: int | None,
     prompt_name: str = "grade_criterion",
     enforce_evidence: bool = False,
+    strictness: str = "standard",
 ) -> dict[str, list[CriterionRun]]:
     """Run every criterion `num_runs` times. A failed run is dropped; a criterion with
     no successful run fails the whole grading."""
@@ -131,6 +135,7 @@ async def grade_all_criteria(
             return await grade_criterion_once(
                 llm, instructions=instructions, draft=draft, criterion=criterion,
                 grading_id=grading_id, prompt_name=prompt_name, enforce_evidence=enforce_evidence,
+                strictness=strictness,
             )
 
     jobs = [(c, one(c)) for c in rubric.criteria for _ in range(num_runs)]
@@ -220,16 +225,20 @@ async def run_grading(
     submission: Submission,
     settings: Settings,
     num_runs: int | None = None,
+    strictness: str | None = None,
 ) -> Grading:
     if not assignment.rubric_confirmed or assignment.rubric_parsed is None:
         raise RubricNotConfirmedError("Confirm the rubric before grading.")
     rubric = Rubric.model_validate(assignment.rubric_parsed)
     runs_wanted = num_runs or settings.grading_runs
+    # A per-request choice wins over the assignment's saved setting.
+    strictness = strictness or assignment.teacher_strictness
     prompt_version = f"{load_prompt('grade_criterion').version}+{load_prompt('feedback').version}"
 
     grading = Grading(
         submission_id=submission.id, strategy=STRATEGY, model=llm.model,
         num_runs=runs_wanted, status="running", prompt_version=prompt_version,
+        strictness=strictness,
     )
     session.add(grading)
     await session.commit()  # llm_calls rows reference this id from separate sessions
@@ -243,6 +252,7 @@ async def run_grading(
             llm, rubric, instructions=assignment.instructions_text, draft=submission.draft_text,
             num_runs=runs_wanted,
             concurrency=settings.grading_concurrency, grading_id=grading_id,
+            strictness=strictness,
         )
         graded = aggregate_runs(rubric, runs, submission.draft_text)
 

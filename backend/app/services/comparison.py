@@ -136,17 +136,18 @@ def compare_gradings(previous: GradingRead, current: GradingRead) -> ComparisonR
         assignment_id=current.assignment_id,
         previous=VersionRef(
             submission_id=previous.submission_id, version_number=previous.version_number,
-            grading_id=previous.id,
+            grading_id=previous.id, strictness=previous.strictness,
         ),
         current=VersionRef(
             submission_id=current.submission_id, version_number=current.version_number,
-            grading_id=current.id,
+            grading_id=current.id, strictness=current.strictness,
         ),
         overall=overall,
         criteria=changes,
         resolved_issues=resolved,
         requirement_changes=requirement_changes,
         remaining_fixes=current.top_fixes,
+        strictness_differs=previous.strictness != current.strictness,
         improved_count=sum(1 for ch in changes if ch.status == "improved"),
         declined_count=sum(1 for ch in changes if ch.status == "declined"),
         unchanged_count=sum(1 for ch in changes if ch.status == "unchanged"),
@@ -189,6 +190,7 @@ def build_history(
                     overall=grading.overall,
                     criterion_points={r.criterion_id: r.median_points for r in grading.criteria},
                     uncertain=[r.criterion_id for r in grading.criteria if r.uncertain],
+                    strictness=grading.strictness,
                 ),
             )
         )

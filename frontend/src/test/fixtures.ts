@@ -64,7 +64,8 @@ export const grading: Grading = {
   strategy: "per_criterion",
   model: "fake",
   num_runs: 3,
-  prompt_version: "grade_criterion.v1+feedback.v1",
+  prompt_version: "grade_criterion.v2+feedback.v1",
+  strictness: "standard",
   created_at: "2026-10-15T12:00:00Z",
   overall: { median: 13, min: 5, max: 16, max_possible: 16 },
   draft_text: DRAFT,
@@ -92,8 +93,8 @@ import type { Comparison, History } from "../api/types";
 
 export const comparison: Comparison = {
   assignment_id: 2,
-  previous: { submission_id: 3, version_number: 1, grading_id: 7 },
-  current: { submission_id: 4, version_number: 2, grading_id: 8 },
+  previous: { submission_id: 3, version_number: 1, grading_id: 7, strictness: "standard" },
+  current: { submission_id: 4, version_number: 2, grading_id: 8, strictness: "standard" },
   overall: {
     previous_median: 8, current_median: 13, change: 5,
     previous_min: 5, previous_max: 9, current_min: 12, current_max: 14, max_possible: 16,
@@ -127,6 +128,7 @@ export const comparison: Comparison = {
   remaining_fixes: [
     { criterion_id: "support", name: "Evidence & Support", points_at_stake: 3, summary: "Evidence is general." },
   ],
+  strictness_differs: false,
   improved_count: 1,
   declined_count: 1,
   unchanged_count: 1,
@@ -145,16 +147,44 @@ export const history: History = {
       submission_id: 3, version_number: 1, created_at: "2026-10-15T10:00:00Z",
       grading: {
         grading_id: 7, overall: { median: 8, min: 5, max: 9, max_possible: 16 },
-        criterion_points: { thesis: 5, support: 3 }, uncertain: ["support"],
+        criterion_points: { thesis: 5, support: 3 }, uncertain: ["support"], strictness: "standard",
       },
     },
     {
       submission_id: 4, version_number: 2, created_at: "2026-10-15T11:00:00Z",
       grading: {
         grading_id: 8, overall: { median: 13, min: 12, max: 14, max_possible: 16 },
-        criterion_points: { thesis: 10, support: 3 }, uncertain: [],
+        criterion_points: { thesis: 10, support: 3 }, uncertain: [], strictness: "strict",
       },
     },
     { submission_id: 5, version_number: 3, created_at: "2026-10-15T12:00:00Z", grading: null },
   ],
+};
+
+// --- Assignment (rubric review page) ---
+
+import type { Assignment } from "../api/types";
+
+export const assignment: Assignment = {
+  id: 2,
+  title: "Persuasive essay",
+  instructions_text: "Write an essay.",
+  rubric_raw_text: "Thesis (10): Excellent = clear position.",
+  rubric_parsed: {
+    criteria: [
+      {
+        id: "thesis",
+        name: "Thesis",
+        max_points: 10,
+        levels: [
+          { label: "Excellent", points: 10, description: "Clear position", inferred: false },
+          { label: "Weak", points: 4, description: "No position", inferred: false },
+        ],
+      },
+    ],
+  },
+  rubric_confirmed: false,
+  requirements_parsed: null,
+  teacher_strictness: "standard",
+  created_at: "2026-10-15T10:00:00Z",
 };

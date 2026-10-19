@@ -82,6 +82,7 @@ def build_grading_read(grading: Grading) -> GradingRead:
         model=grading.model,
         num_runs=grading.num_runs,
         prompt_version=grading.prompt_version,
+        strictness=grading.strictness,  # type: ignore[arg-type]
         created_at=grading.created_at,
         overall=OverallScore(
             median=grading.overall_median,

@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../api/client";
-import type { Rubric } from "../api/types";
+import type { Rubric, Strictness } from "../api/types";
 import RubricEditor from "../components/RubricEditor";
+import StrictnessPicker from "../components/StrictnessPicker";
 import { Button, ErrorBanner, LoadingPanel, PageHeader } from "../components/ui";
 
 export default function ReviewRubricPage() {
@@ -19,8 +20,14 @@ export default function ReviewRubricPage() {
     mutationFn: () => api.parseRubric(id),
     onSuccess: (data) => queryClient.setQueryData(["assignment", id], data),
   });
+  // null until the user picks one; then it overrides the saved setting.
+  const [strictnessChoice, setStrictnessChoice] = useState<Strictness | null>(null);
   const confirm = useMutation({
-    mutationFn: (rubric: Rubric) => api.confirmRubric(id, rubric),
+    mutationFn: async (rubric: Rubric) => {
+      const saved = assignment.data?.teacher_strictness;
+      if (strictnessChoice !== null && strictnessChoice !== saved) await api.setStrictness(id, strictnessChoice);
+      return api.confirmRubric(id, rubric);
+    },
     onSuccess: (data) => {
       queryClient.setQueryData(["assignment", id], data);
       navigate(`/assignments/${id}/submit`);
@@ -54,6 +61,7 @@ export default function ReviewRubricPage() {
 
       {data.rubric_parsed && !parse.isPending && (
         <div className="space-y-6">
+          <StrictnessPicker value={strictnessChoice ?? data.teacher_strictness} onChange={setStrictnessChoice} />
           <RubricEditor
             key={JSON.stringify(data.rubric_parsed)}
             initial={data.rubric_parsed}

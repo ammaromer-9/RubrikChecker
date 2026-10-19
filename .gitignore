@@ -24,3 +24,6 @@ backend/reports/*
 # os / editor
 .DS_Store
 .idea/
+
+# TypeScript build cache
+*.tsbuildinfo

@@ -30,6 +30,8 @@ class Grading(Base):
     status: Mapped[str] = mapped_column(Text, default="pending", server_default="pending")
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     prompt_version: Mapped[str] = mapped_column(Text)
+    # The strictness this grading used (it can differ from the assignment's current setting).
+    strictness: Mapped[str] = mapped_column(Text, default="standard", server_default="standard")
     created_at: Mapped[datetime] = created_at_column()
 
     submission: Mapped[Submission] = relationship(back_populates="gradings")

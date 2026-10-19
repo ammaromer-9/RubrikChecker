@@ -135,4 +135,40 @@ describe("ResultsView", () => {
       "/submissions/3/compare/2",
     );
   });
+
+  describe("teacher strictness", () => {
+    it("says which strictness the score is for", () => {
+      renderResults({ strictness: "strict" });
+      expect(screen.getByTestId("strictness-note")).toHaveTextContent("Graded as for a strict teacher");
+    });
+
+    it("offers no re-grade panel unless the page supports it", () => {
+      renderResults();
+      expect(screen.queryByRole("region", { name: "Grade again" })).not.toBeInTheDocument();
+    });
+
+    it("re-grades with the chosen strictness, starting from the current one", async () => {
+      const onRegrade = vi.fn();
+      renderResults({ strictness: "strict" }, { onRegrade });
+      const panel = screen.getByRole("region", { name: "Grade again" });
+      expect(within(panel).getByRole("radio", { name: /Strict/ })).toBeChecked();
+
+      await userEvent.click(within(panel).getByRole("radio", { name: /Lenient/ }));
+      await userEvent.click(within(panel).getByRole("button", { name: "Grade this draft again as a lenient teacher" }));
+      expect(onRegrade).toHaveBeenCalledExactlyOnceWith("lenient");
+    });
+
+    it("shows progress and blocks a second click while re-grading", () => {
+      renderResults({}, { onRegrade: vi.fn(), regrading: true });
+      const panel = screen.getByRole("region", { name: "Grade again" });
+      expect(within(panel).getByRole("status")).toHaveTextContent("Grading again");
+      expect(within(panel).getByRole("button", { name: /Grade this draft again/ })).toBeDisabled();
+      expect(within(panel).getByRole("radio", { name: /Lenient/ })).toBeDisabled();
+    });
+
+    it("shows a re-grade error", () => {
+      renderResults({}, { onRegrade: vi.fn(), regradeError: "The AI service is busy." });
+      expect(within(screen.getByRole("region", { name: "Grade again" })).getByRole("alert")).toHaveTextContent("busy");
+    });
+  });
 });

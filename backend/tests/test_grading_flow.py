@@ -60,7 +60,7 @@ async def test_full_grading_flow(client: AsyncClient, llm_provider: FakeLLMProvi
 
     assert body["status"] == "complete" and body["num_runs"] == 3
     assert body["overall"] == {"median": 13.0, "min": 5.0, "max": 16.0, "max_possible": 16.0}
-    assert body["prompt_version"] == "grade_criterion.v1+feedback.v1"
+    assert body["prompt_version"] == "grade_criterion.v2+feedback.v1"
 
     thesis, support = body["criteria"]
     assert (thesis["median_points"], thesis["min_points"], thesis["max_points_scored"]) == (10, 5, 10)

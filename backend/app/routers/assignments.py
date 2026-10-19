@@ -5,7 +5,7 @@ from app.config import Settings, get_settings
 from app.db import get_session
 from app.deps import get_llm_client
 from app.models import Assignment
-from app.schemas.assignments import AssignmentCreate, AssignmentRead
+from app.schemas.assignments import AssignmentCreate, AssignmentRead, StrictnessUpdate
 from app.schemas.rubric import Rubric
 from app.services.llm_client import LLMClient
 from app.services.requirements_extractor import extract_requirements
@@ -87,5 +87,17 @@ async def extract_assignment_requirements(
     """Extract checkable requirements (word count, sections, citations) from the instructions."""
     requirements = await extract_requirements(llm, assignment.instructions_text)
     assignment.requirements_parsed = requirements.model_dump(mode="json")
+    await session.commit()
+    return assignment
+
+
+@router.put("/{assignment_id}/strictness", response_model=AssignmentRead)
+async def set_teacher_strictness(
+    body: StrictnessUpdate,
+    assignment: Assignment = Depends(get_assignment_or_404),
+    session: AsyncSession = Depends(get_session),
+) -> Assignment:
+    """How tough the teacher is. Applies to gradings started after this change."""
+    assignment.teacher_strictness = body.teacher_strictness
     await session.commit()
     return assignment
